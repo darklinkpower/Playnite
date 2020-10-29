@@ -10,7 +10,7 @@ namespace Playnite.SDK.Models
     /// <summary>
     /// Represents web link.
     /// </summary>
-    public class Link : ObservableObject
+    public class Link : ObservableObject, IEquatable<Link>
     {
         private string name;
         /// <summary>
@@ -56,6 +56,27 @@ namespace Playnite.SDK.Models
         {
             Name = name;
             Url = url;
+        }
+
+        /// <inheritdoc/>
+        public bool Equals(Link other)
+        {
+            if (other is null)
+            {
+                return false;
+            }
+
+            if (!string.Equals(Name, other.Name, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!string.Equals(Url, other.Url, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }

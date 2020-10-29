@@ -24,9 +24,51 @@ using System.Windows.Input;
 using Playnite.ViewModels;
 using Playnite.DesktopApp.Windows;
 using System.Windows.Controls;
+using Playnite.SDK.Exceptions;
+using Playnite.Common.Media.Icons;
+using Playnite.DesktopApp.Markup;
+using System.Windows.Media.Imaging;
+using System.Windows.Media;
+using System.Drawing.Imaging;
+using Playnite.DesktopApp.Controls;
+using System.Diagnostics;
 
 namespace Playnite.DesktopApp.ViewModels
 {
+    public class SideBarItem : ObservableObject
+    {
+        public ApplicationView ViewSource { get; set; }
+        public string Name { get; set; }
+        public string Image { get; set; }
+        public RelayCommand<SideBarItem> Command { get; set; }
+        public object CommandParameter { get; set; }
+        public object ImageObject
+        {
+            get
+            {
+                if (Image.IsNullOrEmpty())
+                {
+                    return null;
+                }
+                else
+                {
+                    return MenuHelpers.GetIcon(Image, default, default);
+                }
+            }
+        }
+
+        private bool selected;
+        public bool Selected
+        {
+            get => selected;
+            set
+            {
+                selected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public class DesktopAppViewModel : MainViewModelBase, IDisposable
     {
         public static ILogger Logger = LogManager.GetLogger();
@@ -35,6 +77,8 @@ namespace Playnite.DesktopApp.ViewModels
         protected bool ignoreSelectionChanges = false;
         private readonly SynchronizationContext context;
         private PlayniteApplication application;
+        private Controls.LibraryStatistics statsView;
+        private Controls.Views.Library libraryView;
 
         public PlayniteAPI PlayniteApi { get; set;  }
         public ExtensionFactory Extensions { get; set; }
@@ -51,6 +95,28 @@ namespace Playnite.DesktopApp.ViewModels
             set
             {
                 activeView = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private ObservableCollection<SideBarItem> appViewItems;
+        public ObservableCollection<SideBarItem> AppViewItems
+        {
+            get => appViewItems;
+            set
+            {
+                appViewItems = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private StatisticsViewModel libraryStats;
+        public StatisticsViewModel LibraryStats
+        {
+            get => libraryStats;
+            set
+            {
+                libraryStats = value;
                 OnPropertyChanged();
             }
         }
@@ -105,16 +171,14 @@ namespace Playnite.DesktopApp.ViewModels
             }
         }
 
-        public new IEnumerable<GamesCollectionViewEntry> SelectedGames
+        private List<GamesCollectionViewEntry> selectedGames;
+        public new List<GamesCollectionViewEntry> SelectedGames
         {
-            get
+            get => selectedGames;
+            set
             {
-                if (selectedGamesBinder == null)
-                {
-                    return null;
-                }
-
-                return selectedGamesBinder.Cast<GamesCollectionViewEntry>();
+                selectedGames = value;
+                OnPropertyChanged();
             }
         }
 
@@ -124,9 +188,24 @@ namespace Playnite.DesktopApp.ViewModels
             get => selectedGamesBinder;
             set
             {
+                var oldValue = SelectedGames;
                 selectedGamesBinder = value;
+                if (selectedGamesBinder == null)
+                {
+                    SelectedGames = null;
+                }
+                else
+                {
+                    SelectedGames = selectedGamesBinder.Cast<GamesCollectionViewEntry>().ToList();
+                }
+
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(SelectedGames));
+                if (!IsDisposing)
+                {
+                    Extensions.InvokeOnGameSelected(
+                        oldValue?.Select(a => a.Game).ToList(),
+                        SelectedGames?.Select(a => a.Game).ToList());
+                }
             }
         }
 
@@ -141,7 +220,7 @@ namespace Playnite.DesktopApp.ViewModels
             }
         }
 
-        private List<ThirdPartyTool> thirdPartyTools;
+        private List<ThirdPartyTool> thirdPartyTools = new List<ThirdPartyTool>();
         public List<ThirdPartyTool> ThirdPartyTools
         {
             get => thirdPartyTools;
@@ -238,6 +317,7 @@ namespace Playnite.DesktopApp.ViewModels
                 if (value == WindowState.Minimized && AppSettings.MinimizeToTray && AppSettings.EnableTray)
                 {
                     Visibility = Visibility.Hidden;
+                    ImageSourceManager.Cache.Clear();
                 }
 
                 windowState = value;
@@ -315,6 +395,7 @@ namespace Playnite.DesktopApp.ViewModels
         public RelayCommand<object> CancelProgressCommand { get; private set; }
         public RelayCommand<object> ClearMessagesCommand { get; private set; }
         public RelayCommand<object> DownloadMetadataCommand { get; private set; }
+        public RelayCommand<object> OpenSoftwareToolsCommand { get; private set; }
         public RelayCommand<object> ClearFiltersCommand { get; private set; }
         public RelayCommand<object> RemoveGameSelectionCommand { get; private set; }
         public RelayCommand<ExtensionFunction> InvokeExtensionFunctionCommand { get; private set; }
@@ -324,11 +405,15 @@ namespace Playnite.DesktopApp.ViewModels
         public RelayCommand<object> OpenSearchCommand { get; private set; }
         public RelayCommand<object> CheckForUpdateCommand { get; private set; }
         public RelayCommand<object> OpenDbFieldsManagerCommand { get; private set; }
+        public RelayCommand<object> OpenLibraryIntegrationsConfigCommand { get; private set; }
         public RelayCommand<LibraryPlugin> UpdateLibraryCommand { get; private set; }
+        public RelayCommand<SideBarItem> ChangeAppViewCommand { get; private set; }
+        public RelayCommand<object> RestartInSafeMode { get; private set; }
         #endregion
 
         #region Game Commands
         public RelayCommand<Game> StartGameCommand { get; private set; }
+        public RelayCommand<AppSoftware> StartSoftwareToolCommand { get; private set; }
         public RelayCommand<Game> InstallGameCommand { get; private set; }
         public RelayCommand<Game> UninstallGameCommand { get; private set; }
         public RelayCommand<object> StartSelectedGameCommand { get; private set; }
@@ -337,7 +422,9 @@ namespace Playnite.DesktopApp.ViewModels
         public RelayCommand<Game> EditGameCommand { get; private set; }
         public RelayCommand<IEnumerable<Game>> EditGamesCommand { get; private set; }
         public RelayCommand<Game> OpenGameLocationCommand { get; private set; }
-        public RelayCommand<Game> CreateGameShortcutCommand { get; private set; }
+        public RelayCommand<Game> CreateDesktopShortcutCommand { get; private set; }
+        public RelayCommand<List<Game>> CreateDesktopShortcutsCommand { get; private set; }
+        public RelayCommand<Game> OpenManualCommand { get; private set; }
         public RelayCommand<Game> ToggleFavoritesCommand { get; private set; }
         public RelayCommand<Game> ToggleVisibilityCommand { get; private set; }
         public RelayCommand<IEnumerable<Game>> SetAsFavoritesCommand { get; private set; }
@@ -346,8 +433,11 @@ namespace Playnite.DesktopApp.ViewModels
         public RelayCommand<IEnumerable<Game>> RemoveAsHiddensCommand { get; private set; }
         public RelayCommand<Game> AssignGameCategoryCommand { get; private set; }
         public RelayCommand<IEnumerable<Game>> AssignGamesCategoryCommand { get; private set; }
+        public RelayCommand<Tuple<Game, CompletionStatus>> SetGameCompletionStatusCommand { get; private set; }
+        public RelayCommand<Tuple<IEnumerable<Game>, CompletionStatus>> SetGamesCompletionStatusCommand { get; private set; }
         public RelayCommand<Game> RemoveGameCommand { get; private set; }
         public RelayCommand<IEnumerable<Game>> RemoveGamesCommand { get; private set; }
+        public RelayCommand<object> SelectRandomGameCommand { get; private set; }
         #endregion
 
         public DesktopAppViewModel()
@@ -379,6 +469,7 @@ namespace Playnite.DesktopApp.ViewModels
             ((NotificationsAPI)PlayniteApi.Notifications).ActivationRequested += DesktopAppViewModel_ActivationRequested; ;
             AppSettings.FilterSettings.PropertyChanged += FilterSettings_PropertyChanged;
             AppSettings.ViewSettings.PropertyChanged += ViewSettings_PropertyChanged;
+            AppSettings.PropertyChanged += AppSettings_PropertyChanged;
             GamesStats = new DatabaseStats(database);
             InitializeCommands();
         }
@@ -387,23 +478,30 @@ namespace Playnite.DesktopApp.ViewModels
         {
             OpenSearchCommand = new RelayCommand<object>((game) =>
             {
+                if (SearchOpened)
+                {
+                    // The binding sometimes breaks when main window is restored from minimized state.
+                    // This fixes it.
+                    SearchOpened = false;
+                }
+
                 SearchOpened = true;
             }, new KeyGesture(Key.F, ModifierKeys.Control));
 
             ToggleExplorerPanelCommand = new RelayCommand<object>((game) =>
             {
                 AppSettings.ExplorerPanelVisible = !AppSettings.ExplorerPanelVisible;
-            });
+            }, new KeyGesture(Key.E, ModifierKeys.Control));
 
             ToggleFilterPanelCommand = new RelayCommand<object>((game) =>
             {
                 AppSettings.FilterPanelVisible = !AppSettings.FilterPanelVisible;
-            });
+            }, new KeyGesture(Key.G, ModifierKeys.Control));
 
             OpenFilterPanelCommand = new RelayCommand<object>((game) =>
             {
                 AppSettings.FilterPanelVisible = true;
-            });        
+            });
 
             CloseFilterPanelCommand = new RelayCommand<object>((game) =>
             {
@@ -485,6 +583,15 @@ namespace Playnite.DesktopApp.ViewModels
             }, (a) => Database?.IsOpen == true,
             new KeyGesture(Key.T, ModifierKeys.Control));
 
+            OpenSoftwareToolsCommand = new RelayCommand<object>((a) =>
+            {
+                ConfigureSoftwareTools(new ToolsConfigViewModel(
+                    Database,
+                    new ToolsConfigWindowFactory(),
+                    Dialogs,
+                    Resources));
+            }, (a) => Database?.IsOpen == true);
+
             AddCustomGameCommand = new RelayCommand<object>((a) =>
             {
                 AddCustomGame(new GameEditWindowFactory());
@@ -508,7 +615,7 @@ namespace Playnite.DesktopApp.ViewModels
                     Dialogs,
                     Resources));
             }, (a) => Database?.IsOpen == true,
-            new KeyGesture(Key.E, ModifierKeys.Control));
+            new KeyGesture(Key.Q, ModifierKeys.Control));
 
             AddWindowsStoreGamesCommand = new RelayCommand<object>((a) =>
             {
@@ -520,14 +627,14 @@ namespace Playnite.DesktopApp.ViewModels
 
             OpenFullScreenCommand = new RelayCommand<object>((a) =>
             {
-                OpenFullScreen();
+                SwitchToFullscreenMode();
             }, new KeyGesture(Key.F11));
 
             OpenFullScreenFromControllerCommand = new RelayCommand<object>((a) =>
             {
                 if (AppSettings.GuideButtonOpensFullscreen)
                 {
-                    OpenFullScreen();
+                    SwitchToFullscreenMode();
                 }
             }, new KeyGesture(Key.F11));
 
@@ -568,6 +675,18 @@ namespace Playnite.DesktopApp.ViewModels
             }, (a) => GameAdditionAllowed,
             new KeyGesture(Key.W, ModifierKeys.Control));
 
+            OpenLibraryIntegrationsConfigCommand = new RelayCommand<object>((a) =>
+            {
+                OpenIntegrationSettings(
+                    new LibraryIntegrationsViewModel(Database,
+                    AppSettings,
+                    new LibraryIntegrationsWindowFactory(),
+                    Dialogs,
+                    Resources,
+                    Extensions,
+                    application));
+            });
+
             UpdateLibraryCommand = new RelayCommand<LibraryPlugin>((a) =>
             {
                 UpdateLibrary(a);
@@ -582,8 +701,14 @@ namespace Playnite.DesktopApp.ViewModels
             {
                 if (!Extensions.InvokeExtension(f, out var error))
                 {
+                    var message = error.Message;
+                    if (error is ScriptRuntimeException err)
+                    {
+                        message = err.Message + "\n\n" + err.ScriptStackTrace;
+                    }
+
                     Dialogs.ShowMessage(
-                         Resources.GetString("LOCScriptExecutionError") + "\n\n" + error,
+                         message,
                          Resources.GetString("LOCScriptError"),
                          MessageBoxButton.OK, MessageBoxImage.Error);
                 }
@@ -591,7 +716,7 @@ namespace Playnite.DesktopApp.ViewModels
 
             ReloadScriptsCommand = new RelayCommand<object>((f) =>
             {
-                Extensions.LoadScripts(PlayniteApi, AppSettings.DisabledPlugins);
+                Extensions.LoadScripts(PlayniteApi, AppSettings.DisabledPlugins, application.CmdLine.SafeStartup);
             }, new KeyGesture(Key.F12));
 
             ShowGameSideBarCommand = new RelayCommand<GamesCollectionViewEntry>((f) =>
@@ -627,6 +752,11 @@ namespace Playnite.DesktopApp.ViewModels
                 {
                     GamesEditor.PlayGame(SelectedGame.Game);
                 }
+            });
+
+            StartSoftwareToolCommand = new RelayCommand<AppSoftware>((app) =>
+            {
+                StartSoftwareTool(app);
             });
 
             InstallGameCommand = new RelayCommand<Game>((game) =>
@@ -722,9 +852,19 @@ namespace Playnite.DesktopApp.ViewModels
                 GamesEditor.OpenGameLocation(a);
             });
 
-            CreateGameShortcutCommand = new RelayCommand<Game>((a) =>
+            CreateDesktopShortcutCommand = new RelayCommand<Game>((a) =>
             {
-                GamesEditor.CreateShortcut(a);
+                GamesEditor.CreateDesktopShortcut(a);
+            });
+
+            CreateDesktopShortcutsCommand = new RelayCommand<List<Game>>((a) =>
+            {
+                GamesEditor.CreateDesktopShortcut(a);
+            });
+
+            OpenManualCommand = new RelayCommand<Game>((a) =>
+            {
+                GamesEditor.OpenManual(a);
             });
 
             ToggleFavoritesCommand = new RelayCommand<Game>((a) =>
@@ -748,6 +888,16 @@ namespace Playnite.DesktopApp.ViewModels
             AssignGamesCategoryCommand = new RelayCommand<IEnumerable<Game>>((a) =>
             {
                 GamesEditor.SetGamesCategories(a.ToList());
+            });
+
+            SetGameCompletionStatusCommand = new RelayCommand<Tuple<Game, CompletionStatus>>((a) =>
+            {
+                GamesEditor.SetCompletionStatus(a.Item1, a.Item2);
+            });
+
+            SetGamesCompletionStatusCommand = new RelayCommand<Tuple<IEnumerable<Game>, CompletionStatus>>((a) =>
+            {
+                GamesEditor.SetCompletionStatus(a.Item1.ToList(), a.Item2);
             });
 
             RemoveGameCommand = new RelayCommand<Game>((a) =>
@@ -781,6 +931,22 @@ namespace Playnite.DesktopApp.ViewModels
             {
                 GamesEditor.SetHideGames(a.ToList(), false);
             });
+
+            SelectRandomGameCommand = new RelayCommand<object>((a) =>
+            {
+                PlayRandomGame();
+            }, (a) => Database?.IsOpen == true,
+            new KeyGesture(Key.F6));
+
+            ChangeAppViewCommand = new RelayCommand<SideBarItem>((item) =>
+            {
+                AppSettings.CurrentApplicationView = item.ViewSource;
+            });
+
+            RestartInSafeMode = new RelayCommand<object>((a) =>
+            {
+                RestartAppSafe();
+            });
         }
 
         private void DesktopAppViewModel_ActivationRequested(object sender, NotificationsAPI.ActivationRequestEventArgs e)
@@ -800,14 +966,35 @@ namespace Playnite.DesktopApp.ViewModels
             {
                 SelectedGameDetails = new GameDetailsViewModel(SelectedGame, AppSettings, GamesEditor, Dialogs, Resources);
             }
+            else if (e.PropertyName == nameof(AppSettings.ViewSettings.GamesViewType))
+            {
+                SelectedGame = null;
+                SelectedGameDetails = null;
+            }
+        }
+
+        private void AppSettings_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(PlayniteSettings.CurrentApplicationView))
+            {
+                AppViewItems.ForEach(a => a.Selected = false);
+
+                if (AppSettings.CurrentApplicationView == ApplicationView.Statistics)
+                {
+                    AppViewItems[1].Selected = true;
+                    ActiveView = statsView;
+                    LibraryStats.Calculate();
+                }
+                else if (AppSettings.CurrentApplicationView == ApplicationView.Library)
+                {
+                    AppViewItems[0].Selected = true;
+                    ActiveView = libraryView;
+                }
+            }
         }
 
         private void FilterSettings_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            if (e.PropertyName != nameof(AppSettings.FilterSettings.IsActive))
-            {
-                AppSettings.SaveSettings();   
-            }
         }
 
         public void StartThirdPartyTool(ThirdPartyTool tool)
@@ -852,22 +1039,72 @@ namespace Playnite.DesktopApp.ViewModels
             application.Quit();
         }
 
+        public void RestartAppSafe()
+        {
+            CloseView();
+            application.Quit();
+
+            var options = new CmdLineOptions { SafeStartup = true };
+            if (application.Mode == ApplicationMode.Desktop)
+            {
+                Process.Start(PlaynitePaths.DesktopExecutablePath, options.ToString());
+            }
+            else
+            {
+                Process.Start(PlaynitePaths.FullscreenExecutablePath, options.ToString());
+            }
+        }
+
         protected void InitializeView()
         {
-            DatabaseFilters = new DatabaseFilter(Database, Extensions, AppSettings.FilterSettings);
+            LibraryStats = new StatisticsViewModel(Database, Extensions, AppSettings, (g) =>
+            {
+                appSettings.CurrentApplicationView = ApplicationView.Library;
+                SelectedGame = GamesView.Items.FirstOrDefault(a => g.Id == a.Id);
+            });
+
+            libraryView = new Controls.Views.Library(this);
+            statsView = new Controls.LibraryStatistics(LibraryStats);
+
+            AppViewItems = new ObservableCollection<SideBarItem>()
+            {
+                new SideBarItem
+                {
+                    Image = "SidebarLibraryIcon",
+                    Name = Resources.GetString(LOC.Library),
+                    Selected = true,
+                    ViewSource = ApplicationView.Library
+                },
+                new SideBarItem
+                {
+                    Image = "SidebarStatisticsIcon",
+                    Name = Resources.GetString(LOC.Statistics),
+                    Selected = false,
+                    ViewSource = ApplicationView.Statistics
+                }
+            };
+
+            AppViewItems.ForEach(a =>
+            {
+                a.CommandParameter = a;
+                a.Command = ChangeAppViewCommand;
+            });
+
+            AppSettings.CurrentApplicationView = ApplicationView.Library;
+            DatabaseFilters = new DatabaseFilter(Database, Extensions, AppSettings, AppSettings.FilterSettings);
             DatabaseExplorer = new DatabaseExplorer(Database, Extensions, AppSettings);
-            ActiveView = new Controls.Views.Library();
+
             var openProgress = new ProgressViewViewModel(new ProgressWindowFactory(),
-            () =>
+            (_) =>
             {
                 if (!Database.IsOpen)
                 {
                     Database.SetDatabasePath(AppSettings.DatabasePath);
                     Database.OpenDatabase();
                 }
-            }, Resources.GetString("LOCOpeningDatabase"));
+            }, new GlobalProgressOptions("LOCOpeningDatabase"));
 
-            if (openProgress.ActivateProgress() != true)
+            if (openProgress.ActivateProgress().Result != true)
             {
                 Logger.Error(openProgress.FailException, "Failed to open library database.");
                 var message = Resources.GetString("LOCDatabaseOpenError") + $"\n{openProgress.FailException?.Message}";
@@ -875,8 +1112,8 @@ namespace Playnite.DesktopApp.ViewModels
                 GameAdditionAllowed = false;
                 return;
             }
-                     
-            GamesView = new DesktopCollectionView(Database, AppSettings, Extensions);         
+
+            GamesView = new DesktopCollectionView(Database, AppSettings, Extensions);
             BindingOperations.EnableCollectionSynchronization(GamesView.Items, gamesLock);
             if (GamesView.CollectionView.Count > 0)
             {
@@ -897,6 +1134,15 @@ namespace Playnite.DesktopApp.ViewModels
             }
 
             Extensions.NotifiyOnApplicationStarted();
+
+            try
+            {
+                application.Discord = new DiscordManager(AppSettings.DiscordPresenceEnabled);
+            }
+            catch (Exception e) when (!PlayniteEnvironment.ThrowAllErrors)
+            {
+                Logger.Error(e, "Failed to initialize Discord manager.");
+            }
         }
 
         public async Task UpdateDatabase(bool metaForNewGames)
@@ -939,7 +1185,7 @@ namespace Playnite.DesktopApp.ViewModels
 
                         try
                         {
-                            addedGames.AddRange(Database.ImportGames(plugin, AppSettings.ForcePlayTimeSync));
+                            addedGames.AddRange(Database.ImportGames(plugin, AppSettings.ForcePlayTimeSync, AppSettings.ImportExclusionList.Items));
                             RemoveMessage($"{plugin.Id} - download");
                         }
                         catch (Exception e) when (!PlayniteEnvironment.ThrowAllErrors)
@@ -954,16 +1200,16 @@ namespace Playnite.DesktopApp.ViewModels
 
                     ProgressStatus = Resources.GetString("LOCProgressLibImportFinish");
                     Thread.Sleep(500);
-                                     
+
                     if (addedGames.Any() && metaForNewGames)
                     {
                         Logger.Info($"Downloading metadata for {addedGames.Count} new games.");
                         ProgressValue = 0;
                         ProgressTotal = addedGames.Count;
                         ProgressStatus = Resources.GetString("LOCProgressMetadata");
-                        using (var downloader = new MetadataDownloader(Database, Extensions.LibraryPlugins))
+                        using (var downloader = new MetadataDownloader(Database, Extensions.MetadataPlugins, Extensions.LibraryPlugins))
                         {
-                            downloader.DownloadMetadataAsync(addedGames, AppSettings.DefaultMetadataSettings,
+                            downloader.DownloadMetadataAsync(addedGames, AppSettings.MetadataSettings, AppSettings,
                                 (g, i, t) =>
                                 {
                                     ProgressValue = i + 1;
@@ -975,6 +1221,7 @@ namespace Playnite.DesktopApp.ViewModels
                 });
 
                 await GlobalTaskHandler.ProgressTask;
+                Extensions.NotifiyOnLibraryUpdated();
             }
             finally
             {
@@ -1002,7 +1249,7 @@ namespace Playnite.DesktopApp.ViewModels
 
                     try
                     {
-                        addedGames.AddRange(Database.ImportGames(library, AppSettings.ForcePlayTimeSync));
+                        addedGames.AddRange(Database.ImportGames(library, AppSettings.ForcePlayTimeSync, AppSettings.ImportExclusionList.Items));
                         RemoveMessage($"{library.Id} - download");
                     }
                     catch (Exception e) when (!PlayniteEnvironment.ThrowAllErrors)
@@ -1023,9 +1270,9 @@ namespace Playnite.DesktopApp.ViewModels
                         ProgressValue = 0;
                         ProgressTotal = addedGames.Count;
                         ProgressStatus = Resources.GetString("LOCProgressMetadata");
-                        using (var downloader = new MetadataDownloader(Database, Extensions.LibraryPlugins))
+                        using (var downloader = new MetadataDownloader(Database, Extensions.MetadataPlugins, Extensions.LibraryPlugins))
                         {
-                            downloader.DownloadMetadataAsync(addedGames, AppSettings.DefaultMetadataSettings,
+                            downloader.DownloadMetadataAsync(addedGames, AppSettings.MetadataSettings, AppSettings,
                                 (g, i, t) =>
                                 {
                                     ProgressValue = i + 1;
@@ -1065,10 +1312,10 @@ namespace Playnite.DesktopApp.ViewModels
                 ProgressTotal = games.Count;
                 ProgressStatus = Resources.GetString("LOCProgressMetadata");
 
-                using (var downloader = new MetadataDownloader(Database, Extensions.LibraryPlugins))
+                using (var downloader = new MetadataDownloader(Database, Extensions.MetadataPlugins, Extensions.LibraryPlugins))
                 {
                     GlobalTaskHandler.ProgressTask =
-                        downloader.DownloadMetadataAsync(games, settings,
+                        downloader.DownloadMetadataAsync(games, settings, AppSettings,
                             (g, i, t) =>
                             {
                                 ProgressValue = i + 1;
@@ -1112,10 +1359,9 @@ namespace Playnite.DesktopApp.ViewModels
             await DownloadMetadata(settings, games);
         }
 
-
         public async void DownloadMetadata(MetadataDownloadViewModel model)
         {
-            if (model.OpenView(MetadataDownloadViewModel.ViewMode.Manual, AppSettings.DefaultMetadataSettings.GetClone()) != true)
+            if (model.OpenView(MetadataDownloadViewModel.ViewMode.Manual, AppSettings.MetadataSettings.GetClone()) != true)
             {
                 return;
             }
@@ -1139,14 +1385,14 @@ namespace Playnite.DesktopApp.ViewModels
             Database.Games.Add(newGame);
             if (GamesEditor.EditGame(newGame) == true)
             {
-                var viewEntry = GamesView.Items.First(a => a.Game.GameId == newGame.GameId);
+                var viewEntry = GamesView.Items.First(a => a.Game.Id == newGame.Id);
                 SelectedGame = viewEntry;
             }
             else
             {
                 Database.Games.Remove(newGame);
             }
-        }
+}
 
         public async void ImportWindowsStoreGames(InstalledGamesViewModel model)
         {
@@ -1157,7 +1403,7 @@ namespace Playnite.DesktopApp.ViewModels
                 {
                     if (!GlobalTaskHandler.IsActive)
                     {
-                        await DownloadMetadata(AppSettings.DefaultMetadataSettings, addedGames);
+                        await DownloadMetadata(AppSettings.MetadataSettings, addedGames);
                     }
                     else
                     {
@@ -1176,7 +1422,7 @@ namespace Playnite.DesktopApp.ViewModels
                 {
                     if (!GlobalTaskHandler.IsActive)
                     {
-                        await DownloadMetadata(AppSettings.DefaultMetadataSettings, addedGames);
+                        await DownloadMetadata(AppSettings.MetadataSettings, addedGames);
                     }
                     else
                     {
@@ -1194,7 +1440,7 @@ namespace Playnite.DesktopApp.ViewModels
                 {
                     if (!GlobalTaskHandler.IsActive)
                     {
-                        await DownloadMetadata(AppSettings.DefaultMetadataSettings, model.ImportedGames);
+                        await DownloadMetadata(AppSettings.MetadataSettings, model.ImportedGames);
                     }
                     else
                     {
@@ -1203,7 +1449,7 @@ namespace Playnite.DesktopApp.ViewModels
                 }
             }
         }
-        
+
         public void OpenAboutWindow(AboutViewModel model)
         {
             model.OpenView();
@@ -1214,7 +1460,17 @@ namespace Playnite.DesktopApp.ViewModels
             model.OpenView();
         }
 
+        public void OpenIntegrationSettings(LibraryIntegrationsViewModel model)
+        {
+            model.OpenView();
+        }
+
         public void ConfigureEmulators(EmulatorsViewModel model)
+        {
+            model.OpenView();
+        }
+
+        private void ConfigureSoftwareTools(ToolsConfigViewModel model)
         {
             model.OpenView();
         }
@@ -1222,7 +1478,7 @@ namespace Playnite.DesktopApp.ViewModels
         public void ConfigureDatabaseFields(DatabaseFieldsManagerViewModel model)
         {
             model.OpenView();
-        }        
+        }
 
         public void SelectGame(Guid id)
         {
@@ -1241,6 +1497,7 @@ namespace Playnite.DesktopApp.ViewModels
             {
                 Visibility = Visibility.Hidden;
                 args.Cancel = true;
+                ImageSourceManager.Cache.Clear();
             }
             else
             {
@@ -1267,33 +1524,19 @@ namespace Playnite.DesktopApp.ViewModels
                 var files = (string[])args.Data.GetData(DataFormats.FileDrop);
                 if (files.Count() == 1)
                 {
-                    Window.BringToForeground();
+                    Window.RestoreWindow();
 
                     var path = files[0];
                     if (File.Exists(path))
                     {
                         var ext = Path.GetExtension(path).ToLower();
-                        if (ext.Equals(ThemeManager.PackedThemeFileExtention, StringComparison.OrdinalIgnoreCase))
+                        if (ext.Equals(PlaynitePaths.PackedThemeFileExtention, StringComparison.OrdinalIgnoreCase))
                         {
-                            try
-                            {
-                                var desc = ThemeManager.GetDescriptionFromPackedFile(path);
-                                if (Dialogs.ShowMessage(
-                                        string.Format(Resources.GetString("LOCThemeInstallPrompt"),
-                                            desc.Name, desc.Author, desc.Version),
-                                        Resources.GetString("LOCGeneralExtensionInstallTitle"),
-                                        MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-                                {
-                                    ThemeManager.InstallFromPackedFile(path);
-                                    Dialogs.ShowMessage(Resources.GetString("LOCGeneralExtensionInstallSuccess"));
-                                }
-                            }
-                            catch (Exception e) when (!PlayniteEnvironment.ThrowAllErrors)
-                            {
-                                Logger.Error(e, "Failed to install theme.");
-                                Dialogs.ShowErrorMessage(
-                                    Resources.GetString("LOCThemeInstallFail"), "");
-                            }
+                            application.InstallThemeFile(path);
+                        }
+                        else if (ext.Equals(PlaynitePaths.PackedExtensionFileExtention, StringComparison.OrdinalIgnoreCase))
+                        {
+                            application.InstallExtensionFile(path);
                         }
                         else
                         {
@@ -1304,15 +1547,31 @@ namespace Playnite.DesktopApp.ViewModels
                             }
 
                             var game = GameExtensions.GetGameFromExecutable(path);
-                            var exePath = game.GetRawExecutablePath();
-                            if (!string.IsNullOrEmpty(exePath))
+                            var icoPath = game.Icon;
+                            game.Icon = null;
+                            if (icoPath.IsNullOrEmpty())
                             {
-                                var ico = IconExtension.ExtractIconFromExe(exePath, true);
-                                if (ico != null)
+                                var exePath = game.GetRawExecutablePath();
+                                if (!string.IsNullOrEmpty(exePath))
                                 {
-                                    var iconName = Guid.NewGuid().ToString() + ".png";
-                                    game.Icon = Database.AddFile(iconName, ico.ToByteArray(System.Drawing.Imaging.ImageFormat.Png), game.Id);
+                                    icoPath = exePath;
                                 }
+                            }
+
+                            if (icoPath?.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) == true)
+                            {
+                                using (var ms = new MemoryStream())
+                                {
+                                    if (IconExtractor.ExtractMainIconFromFile(icoPath, ms))
+                                    {
+                                        var iconName = Guid.NewGuid().ToString() + ".ico";
+                                        game.Icon = Database.AddFile(iconName, ms.ToArray(), game.Id);
+                                    }
+                                }
+                            }
+                            else if (!icoPath.IsNullOrEmpty())
+                            {
+                                game.Icon = Database.AddFile(icoPath, game.Id);
                             }
 
                             Database.Games.Add(game);
@@ -1366,7 +1625,7 @@ namespace Playnite.DesktopApp.ViewModels
                 }
                 else
                 {
-                    Dialogs.ShowMessage(Resources.GetString("LOCUpdateNoNewUpdateMessage"), string.Empty);                    
+                    Dialogs.ShowMessage(Resources.GetString("LOCUpdateNoNewUpdateMessage"), string.Empty);
                 }
             }
             catch (Exception e) when (!PlayniteEnvironment.ThrowAllErrors)
@@ -1376,30 +1635,57 @@ namespace Playnite.DesktopApp.ViewModels
             }
         }
 
-        public void OpenFullScreen()
+        public void SwitchToFullscreenMode()
         {
             if (GlobalTaskHandler.IsActive)
             {
-                ProgressViewViewModel.ActivateProgress(() => GlobalTaskHandler.CancelAndWait(), Resources.GetString("LOCOpeningFullscreenModeMessage"));
+                Dialogs.ActivateGlobalProgress(
+                    (_) => GlobalTaskHandler.CancelAndWait(),
+                    new GlobalProgressOptions("LOCOpeningFullscreenModeMessage"));
             }
 
             CloseView();
             application.Quit();
-            var cmdline = new CmdLineOptions() { SkipLibUpdate = true };
+            var cmdline = new CmdLineOptions()
+            {
+                SkipLibUpdate = true,
+                StartInFullscreen = true
+            };
+
             ProcessStarter.StartProcess(PlaynitePaths.FullscreenExecutablePath, cmdline.ToString());
-            application.Quit();
+        }
+
+        public void PlayRandomGame()
+        {
+            var model = new RandomGameSelectViewModel(
+                Database,
+                GamesView,
+                new RandomGameSelectWindowFactory(),
+                Resources);
+            if (model.OpenView() == true && model.SelectedGame != null)
+            {
+                var selection = GamesView.Items.FirstOrDefault(a => a.Id == model.SelectedGame.Id);
+                if (selection != null)
+                {
+                    SelectedGame = selection;
+                    GamesEditor.PlayGame(selection.Game);
+                }
+            }
         }
 
         public void OpenView()
         {
             Window.Show(this);
+            application.UpdateScreenInformation(Window.Window);
+            Window.Window.LocationChanged += Window_LocationChanged;
+
             if (AppSettings.StartMinimized)
             {
                 WindowState = WindowState.Minimized;
             }
             else
             {
-                Window.BringToForeground();
+                Window.RestoreWindow();
             }
 
             InitializeView();
@@ -1416,18 +1702,58 @@ namespace Playnite.DesktopApp.ViewModels
         public async void CancelProgress()
         {
             await GlobalTaskHandler.CancelAndWaitAsync();
-        }        
+        }
 
         public virtual void ClearFilters()
         {
             AppSettings.FilterSettings.ClearFilters();
         }
 
-        public virtual void Dispose()
+        public void Dispose()
         {
+            IsDisposing = true;
             GamesView?.Dispose();
             GamesStats?.Dispose();
             AppSettings.FilterSettings.PropertyChanged -= FilterSettings_PropertyChanged;
+            Window.Window.LocationChanged -= Window_LocationChanged;
+        }
+
+        private void Window_LocationChanged(object sender, EventArgs e)
+        {
+            application.UpdateScreenInformation(Window.Window);
+        }
+
+        public bool OpenPluginSettings(Guid pluginId)
+        {
+            if (!Extensions.Plugins.ContainsKey(pluginId))
+            {
+                Logger.Error($"Cannot open plugin settings, plugin is not loaded {pluginId}");
+                return false;
+            }
+
+            var model = new PluginSettingsViewModel(
+                new PluginSettingsWindowFactory(),
+                Resources,
+                Dialogs,
+                Extensions,
+                pluginId);
+            return model.OpenView() ?? false;
+        }
+
+        private void StartSoftwareTool(AppSoftware app)
+        {
+            try
+            {
+                ProcessStarter.StartProcess(app.Path, app.Arguments, app.WorkingDir);
+            }
+            catch (Exception e)  when (!PlayniteEnvironment.ThrowAllErrors)
+            {
+                Logger.Error(e, "Failed to start app tool.");
+                Dialogs.ShowErrorMessage(
+                    Resources.GetString("LOCAppStartupError") + "\n\n" +
+                    e.Message,
+                    "LOCStartupError");
+            }
         }
     }
 }

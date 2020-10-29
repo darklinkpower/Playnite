@@ -1,6 +1,5 @@
-﻿using Playnite;
-using Playnite.SDK;
-using Playnite.SDK.Models;
+﻿using Playnite.SDK;
+using Steam;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,6 +23,8 @@ namespace SteamLibrary
                     return ResourceProvider.GetString("LOCSteamBackgroundSourceScreenshot");
                 case BackgroundSource.StoreBackground:
                     return ResourceProvider.GetString("LOCSteamBackgroundSourceStore");
+                case BackgroundSource.Banner:
+                    return ResourceProvider.GetString("LOCSteamBackgroundSourceBanner");
                 default:
                     return string.Empty;
             }

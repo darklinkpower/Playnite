@@ -2,6 +2,7 @@
 using Playnite.Common;
 using Playnite.Controls;
 using Playnite.Converters;
+using Playnite.FullscreenApp.Markup;
 using Playnite.FullscreenApp.ViewModels;
 using Playnite.Input;
 using System;
@@ -23,6 +24,7 @@ namespace Playnite.FullscreenApp.Controls.Views
     [TemplatePart(Name = "PART_ButtonOptions", Type = typeof(ButtonBase))]
     [TemplatePart(Name = "PART_ImageCover", Type = typeof(Image))]
     [TemplatePart(Name = "PART_ImageBackground", Type = typeof(FadeImage))]
+    [TemplatePart(Name = "PART_HtmlDescription", Type = typeof(HtmlTextView))]
     public class GameDetails : Control
     {
         private FullscreenAppViewModel mainModel;
@@ -31,6 +33,7 @@ namespace Playnite.FullscreenApp.Controls.Views
         private ButtonBase ButtonOptions;
         private Image ImageCover;
         private FadeImage ImageBackground;
+        private HtmlTextView HtmlDescription;
 
         static GameDetails()
         {
@@ -121,7 +124,16 @@ namespace Playnite.FullscreenApp.Controls.Views
                 {
                     BindingTools.SetBinding(ImageBackground,
                         FadeImage.SourceProperty,
-                        nameof(GamesCollectionViewEntry.BackgroundImage));
+                        nameof(GamesCollectionViewEntry.DisplayBackgroundImageObject));
+                }
+
+                HtmlDescription = Template.FindName("PART_HtmlDescription", this) as HtmlTextView;
+                if (HtmlDescription != null)
+                {
+                    BindingTools.SetBinding(HtmlDescription,
+                        HtmlTextView.HtmlTextProperty,
+                        nameof(GamesCollectionViewEntry.Description));
+                    HtmlDescription.TemplatePath = ThemeFile.GetFilePath("DescriptionView.html");
                 }
             }
         }

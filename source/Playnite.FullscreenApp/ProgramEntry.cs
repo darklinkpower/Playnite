@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -16,6 +17,20 @@ namespace Playnite.FullscreenApp
         [STAThread]
         public static void Main(string[] args)
         {
+            FileSystem.CreateDirectory(PlaynitePaths.JitProfilesPath);
+            ProfileOptimization.SetProfileRoot(PlaynitePaths.JitProfilesPath);
+            ProfileOptimization.StartProfile("fullscreen");
+
+            if (PlaynitePaths.ProgramPath.Contains(@"temp\rar$", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show(
+                    "Playnite is not allowed to run from temporary extracted archive.\rInstall/Extract application properly before starting it.",
+                    "Startup Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+                return;
+            }
+
             var cmdLine = new CmdLineOptions();
             var parsed = Parser.Default.ParseArguments<CmdLineOptions>(Environment.GetCommandLineArgs());
             if (parsed is Parsed<CmdLineOptions> options)

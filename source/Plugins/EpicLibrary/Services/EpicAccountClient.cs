@@ -38,7 +38,7 @@ namespace EpicLibrary.Services
         {
             this.api = api;
             this.tokensPath = tokensPath;
-            var loginUrlMask = @"https://{0}/login/launcher?redirectUrl=https%3A%2F%2F{0}%2Flogin%2FshowPleaseWait%3Fclient_id%3D24a1bff3f90749efbfcbc576c626a282%26rememberEmail%3Dfalse&client_id=24a1bff3f90749efbfcbc576c626a282&isLauncher=true";                        
+            var loginUrlMask = @"https://{0}/login?redirectUrl=https%3A%2F%2F{0}%2Flogin%2FshowPleaseWait%3Fclient_id%3D24a1bff3f90749efbfcbc576c626a282%26rememberEmail%3Dfalse&client_id=24a1bff3f90749efbfcbc576c626a282&isLauncher=true";
             var oauthUrlMask = @"https://{0}/account/api/oauth/token";
             var accountUrlMask = @"https://{0}/account/api/public/account/";
             var assetsUrlMask = @"https://{0}/launcher/api/public/assets/Windows?label=Live";
@@ -77,9 +77,9 @@ namespace EpicLibrary.Services
         {
             var loggedIn = false;
             var loginPageSource = string.Empty;
-            using (var view = api.WebViews.CreateView(675, 600, Colors.Black))
+            using (var view = api.WebViews.CreateView(580, 700))
             {
-                view.NavigationChanged += async (s, e) =>
+                view.LoadingChanged += async (s, e) =>
                 {
                     var address = view.GetCurrentAddress();
                     if (address.StartsWith(@"https://accounts.launcher-website-prod07.ol.epicgames.com/login/showPleaseWait"))
@@ -90,7 +90,7 @@ namespace EpicLibrary.Services
                     }
                 };
 
-                view.DeleteCookies(@"epicgames.com", null);
+                view.DeleteDomainCookies(".epicgames.com");
                 view.Navigate(loginUrl);
                 view.OpenDialog();
             }
@@ -105,7 +105,6 @@ namespace EpicLibrary.Services
             if (string.IsNullOrEmpty(exchangeKey))
             {
                 logger.Error("Failed to get login exchange key for Epic account.");
-                logger.Debug(loginPageSource);
                 return;
             }
 
@@ -119,12 +118,12 @@ namespace EpicLibrary.Services
                     content.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
                     var response = httpClient.PostAsync(oauthUrl, content).GetAwaiter().GetResult();
                     var respContent = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                    FileSystem.CreateDirectory(tokensPath);
+                    FileSystem.CreateDirectory(Path.GetDirectoryName(tokensPath));
                     File.WriteAllText(tokensPath, respContent);
                 }
             }
         }
-        
+
         public bool GetIsUserLoggedIn()
         {
             var tokens = loadTokens();
@@ -135,7 +134,7 @@ namespace EpicLibrary.Services
 
             try
             {
-                var account = invokeRequest<AccountResponse>(accountUrl + tokens.account_id, tokens).GetAwaiter().GetResult();
+                var account = InvokeRequest<AccountResponse>(accountUrl + tokens.account_id, tokens).GetAwaiter().GetResult().Item2;
                 return account.id == tokens.account_id;
             }
             catch (Exception e)
@@ -144,7 +143,7 @@ namespace EpicLibrary.Services
                 {
                     renewToknes(tokens.refresh_token);
                     tokens = loadTokens();
-                    var account = invokeRequest<AccountResponse>(accountUrl + tokens.account_id, tokens).GetAwaiter().GetResult();
+                    var account = InvokeRequest<AccountResponse>(accountUrl + tokens.account_id, tokens).GetAwaiter().GetResult().Item2;
                     return account.id == tokens.account_id;
                 }
                 else
@@ -162,18 +161,37 @@ namespace EpicLibrary.Services
                 throw new Exception("User is not authenticated.");
             }
 
-            return invokeRequest<List<Asset>>(assetsUrl, loadTokens()).GetAwaiter().GetResult();
+            return InvokeRequest<List<Asset>>(assetsUrl, loadTokens()).GetAwaiter().GetResult().Item2;
         }
 
-        public CatalogItem GetCatalogItem(string nameSpace, string id)
+        public CatalogItem GetCatalogItem(string nameSpace, string id, string cachePath)
         {
-            if (!GetIsUserLoggedIn())
+            Dictionary<string, CatalogItem> result = null;
+            if (!cachePath.IsNullOrEmpty() && File.Exists(cachePath))
             {
-                throw new Exception("User is not authenticated.");
+                try
+                {
+                    result = Serialization.FromJsonFile<Dictionary<string, CatalogItem>>(cachePath);
+                }
+                catch (Exception e)
+                {
+                    logger.Error(e, "Failed to load Epic catalog cache.");
+                }
             }
 
-            var url = string.Format("{0}/bulk/items?id={1}&country=US&locale=en-US", nameSpace, id);
-            var result = invokeRequest<Dictionary<string, CatalogItem>>(catalogUrl + url, loadTokens()).GetAwaiter().GetResult();
+            if (result == null)
+            {
+                if (!GetIsUserLoggedIn())
+                {
+                    throw new Exception("User is not authenticated.");
+                }
+
+                var url = string.Format("{0}/bulk/items?id={1}&country=US&locale=en-US", nameSpace, id);
+                var catalogResponse = InvokeRequest<Dictionary<string, CatalogItem>>(catalogUrl + url, loadTokens()).GetAwaiter().GetResult();
+                result = catalogResponse.Item2;
+                FileSystem.WriteStringToFile(cachePath, catalogResponse.Item1);
+            }
+
             if (result.TryGetValue(id, out var catalogItem))
             {
                 return catalogItem;
@@ -181,7 +199,7 @@ namespace EpicLibrary.Services
             else
             {
                 throw new Exception($"Epic catalog item for {id} {nameSpace} not found.");
-            }                
+            }
         }
 
         private void renewToknes(string refreshToken)
@@ -196,13 +214,13 @@ namespace EpicLibrary.Services
                     content.Headers.Add("Content-Type", "application/x-www-form-urlencoded");
                     var response = httpClient.PostAsync(oauthUrl, content).GetAwaiter().GetResult();
                     var respContent = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-                    FileSystem.CreateDirectory(tokensPath);
+                    FileSystem.CreateDirectory(Path.GetDirectoryName(tokensPath));
                     File.WriteAllText(tokensPath, respContent);
                 }
             }
         }
 
-        private async Task<T> invokeRequest<T>(string url, OauthResponse tokens) where T : class
+        private async Task<Tuple<string, T>> InvokeRequest<T>(string url, OauthResponse tokens) where T : class
         {
             using (var httpClient = new HttpClient())
             {
@@ -217,7 +235,7 @@ namespace EpicLibrary.Services
                 }
                 else
                 {
-                    return Serialization.FromJson<T>(str);
+                    return new Tuple<string, T>(str, Serialization.FromJson<T>(str));
                 }
             }
         }

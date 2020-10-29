@@ -12,6 +12,7 @@ using Playnite.SDK;
 using Playnite.SDK.Plugins;
 using Playnite.API;
 using Playnite.Tests;
+using Playnite.Common;
 
 namespace OriginLibrary.Tests
 {
@@ -27,7 +28,7 @@ namespace OriginLibrary.Tests
         public void GetInstalledGamesTest()
         {
             var originLib = CreateLibrary();
-            var games = originLib.GetInstalledGames(false);
+            var games = originLib.GetInstalledGames();
             Assert.AreNotEqual(0, games.Count);
 
             var game = games.Values.First();
@@ -40,19 +41,10 @@ namespace OriginLibrary.Tests
             {
                 if (g.PlayAction.Type == GameActionType.File)
                 {
-                    var file = Path.Combine(g.InstallDirectory, g.PlayAction.Path);
+                    var file = Path.Combine(g.InstallDirectory, g.ExpandVariables(g.PlayAction.Path));
                     Assert.IsTrue(File.Exists(file));
                 }
             }
-        }
-
-        [Test]
-        public void GetInstalledGamesCacheTest()
-        {
-            var originLib = CreateLibrary();
-            var games = originLib.GetInstalledGames(true);
-            var cacheFiles = Directory.GetFiles(Origin.GetCachePath(originLib.GetPluginUserDataPath()), "*.json");
-            Assert.IsTrue(cacheFiles.Count() > 0);
         }
 
         [Test]
@@ -60,10 +52,10 @@ namespace OriginLibrary.Tests
         {
             var originLib = CreateLibrary();
             var path = originLib.GetPathFromPlatformPath(@"[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\PowerShell\\3\\PowerShellEngine\\ApplicationBase]\\powershell.exe");
-            Assert.IsTrue(File.Exists(path));
+            Assert.IsTrue(File.Exists(path.CompletePath));
 
-            path = originLib.GetPathFromPlatformPath(@"[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\PowerShell\\3\\PowerShellEngine\\ApplicatioBase]\\powershell.exe");
-            Assert.IsTrue(string.IsNullOrEmpty(path));
+            path = originLib.GetPathFromPlatformPath(@"[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\PowerShell\\3\\PowerShellEngine\\NonSense]\\powershell.exe");
+            Assert.IsNull(path);
         }
     }
 }

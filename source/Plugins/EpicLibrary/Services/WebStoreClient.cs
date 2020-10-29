@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace EpicLibrary.Services
 {
@@ -14,7 +15,7 @@ namespace EpicLibrary.Services
         private HttpClient httpClient = new HttpClient();
 
         public const string GraphQLEndpoint = @"https://graphql.epicgames.com/graphql";
-        public const string ProductUrlBase = @"https://www.epicgames.com/store/en-US/api/content/products/{0}?lang=en-US";
+        public const string ProductUrlBase = @"https://store-content.ak.epicgames.com/api/en-US/content/products/{0}";
 
         public WebStoreClient()
         {
@@ -25,15 +26,15 @@ namespace EpicLibrary.Services
             httpClient.Dispose();
         }
 
-        public async Task<List<WebStoreModels.QuerySearchResponse.CatalogOfferElemen>> QuerySearch(string searchTerm)
+        public async Task<List<WebStoreModels.QuerySearchResponse.SearchStoreElement>> QuerySearch(string searchTerm)
         {
             var query = new WebStoreModels.QuerySearch();
-            query.variables.query = searchTerm;
+            query.variables.keywords = HttpUtility.UrlPathEncode(searchTerm);
             var content = new StringContent(Serialization.ToJson(query), Encoding.UTF8, "application/json");
             var response = await httpClient.PostAsync(GraphQLEndpoint, content);
             var str = await response.Content.ReadAsStringAsync();
             var data = Serialization.FromJson<WebStoreModels.QuerySearchResponse>(str);
-            return data.data.Catalog.catalogOffers.elements;
+            return data.data.Catalog.searchStore.elements;
         }
 
         public async Task<WebStoreModels.ProductResponse> GetProductInfo(string productSlug)

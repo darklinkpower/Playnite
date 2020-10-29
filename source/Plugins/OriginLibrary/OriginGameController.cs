@@ -1,4 +1,5 @@
-﻿using Playnite;
+﻿using OriginLibrary.Models;
+using Playnite;
 using Playnite.Common;
 using Playnite.SDK;
 using Playnite.SDK.Events;
@@ -36,7 +37,6 @@ namespace OriginLibrary
 
         public void ReleaseResources()
         {
-
             procMon?.Dispose();
         }
 
@@ -46,12 +46,11 @@ namespace OriginLibrary
             OnStarting(this, new GameControllerEventArgs(this, 0));
             if (Directory.Exists(Game.InstallDirectory))
             {
-                var playAction = api.ExpandGameVariables(Game, Game.PlayAction);
                 stopWatch = Stopwatch.StartNew();
                 procMon = new ProcessMonitor();
                 procMon.TreeDestroyed += ProcMon_TreeDestroyed;
                 procMon.TreeStarted += ProcMon_TreeStarted;
-                GameActionActivator.ActivateAction(playAction);
+                ProcessStarter.StartUrl(Origin.GetLaunchString(Game.GameId));
                 StartRunningWatcher();
             }
             else
@@ -71,15 +70,15 @@ namespace OriginLibrary
             {
                 // Solves issues with game process being started/shutdown multiple times during startup via Origin
                 await Task.Delay(5000);
-            }  
+            }
 
-            procMon.WatchDirectoryProcesses(Game.InstallDirectory, false);         
+            procMon.WatchDirectoryProcesses(Game.InstallDirectory, false);
         }
 
         public override void Install()
         {
             ReleaseResources();
-            ProcessStarter.StartUrl($"origin2://game/launch?offerIds={Game.GameId}&autoDownload=true");
+            ProcessStarter.StartUrl($"origin2://library/open");
             StartInstallWatcher();
         }
 
@@ -103,9 +102,9 @@ namespace OriginLibrary
 
         public async void StartInstallWatcher()
         {
-            watcherToken = new CancellationTokenSource();  
-            var manifest = origin.GetLocalManifest(Game.GameId, null, true);
-            if (manifest.publishing == null)
+            watcherToken = new CancellationTokenSource();
+            var manifest = origin.GetLocalManifest(Game.GameId);
+            if (manifest?.publishing == null)
             {
                 logger.Error($"No publishing manifest found for Origin game {Game.GameId}, stopping installation check.");
                 OnUninstalled(this, new GameControllerEventArgs(this, 0));
@@ -122,14 +121,19 @@ namespace OriginLibrary
                 }
 
                 var executablePath = origin.GetPathFromPlatformPath(platform.fulfillmentAttributes.installCheckOverride);
-                if (!string.IsNullOrEmpty(executablePath))
+                if (!executablePath?.CompletePath.IsNullOrEmpty() != null)
                 {
-                    if (File.Exists(executablePath))
+                    if (File.Exists(executablePath.CompletePath))
                     {
                         var installInfo = new GameInfo()
                         {
-                            PlayAction = origin.GetGamePlayTask(manifest),
-                            InstallDirectory = Path.GetDirectoryName(executablePath)
+                            PlayAction = new GameAction
+                            {
+                                Type = GameActionType.URL,
+                                Path = Origin.GetLaunchString(Game.GameId),
+                                IsHandledByPlugin = true
+                            },
+                            InstallDirectory = origin.GetInstallDirectory(manifest)
                         };
 
                         OnInstalled(this, new GameInstalledEventArgs(installInfo, this, 0));
@@ -143,8 +147,15 @@ namespace OriginLibrary
 
         public async void StartUninstallWatcher()
         {
-            watcherToken = new CancellationTokenSource();   
-            var manifest = origin.GetLocalManifest(Game.GameId, null, true);
+            watcherToken = new CancellationTokenSource();
+            var manifest = origin.GetLocalManifest(Game.GameId);
+            if (manifest?.publishing == null)
+            {
+                logger.Error($"No publishing manifest found for Origin game {Game.GameId}, stopping uninstallation check.");
+                OnUninstalled(this, new GameControllerEventArgs(this, 0));
+                return;
+            }
+
             var platform = manifest.publishing.softwareList.software.FirstOrDefault(a => a.softwarePlatform == "PCWIN");
             var executablePath = origin.GetPathFromPlatformPath(platform.fulfillmentAttributes.installCheckOverride);
 
@@ -155,14 +166,14 @@ namespace OriginLibrary
                     return;
                 }
 
-                if (string.IsNullOrEmpty(executablePath))
+                if (executablePath?.CompletePath == null)
                 {
                     OnUninstalled(this, new GameControllerEventArgs(this, 0));
                     return;
                 }
                 else
                 {
-                    if (!File.Exists(executablePath))
+                    if (!File.Exists(executablePath.CompletePath))
                     {
                         OnUninstalled(this, new GameControllerEventArgs(this, 0));
                         return;

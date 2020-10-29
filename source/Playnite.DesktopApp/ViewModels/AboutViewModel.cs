@@ -33,7 +33,7 @@ namespace Playnite.DesktopApp.ViewModels
         {
             get
             {
-                return "SDK " + Playnite.SDK.Version.SDKVersion.ToString(3);
+                return "SDK: " + Playnite.SDK.SdkVersions.SDKVersion.ToString(3);
             }
         }
 
@@ -41,8 +41,20 @@ namespace Playnite.DesktopApp.ViewModels
         {
             get
             {
-                return "Theme API " + ThemeManager.ThemeApiVersion.ToString(3);
+                return "Theme API:\n" +
+                    $"Desktop: {ThemeManager.DesktopApiVersion.ToString(3)}\n" +
+                    $"Fullscreen: {ThemeManager.FullscreenApiVersion.ToString(3)}\n";
             }
+        }
+
+        public string InstallDir
+        {
+            get => PlaynitePaths.ProgramPath;
+        }
+
+        public string UserDir
+        {
+            get => PlaynitePaths.ConfigRootPath;
         }
 
         public string Contributors
@@ -100,13 +112,15 @@ namespace Playnite.DesktopApp.ViewModels
             });
         }
 
-        public RelayCommand<Uri> NavigateUrlCommand
+        public RelayCommand<object> OpenLicensesCommand
         {
-            get => new RelayCommand<Uri>((url) =>
+            get => new RelayCommand<object>((a) =>
             {
-                NavigateUrl(url.AbsoluteUri);
+                ProcessStarter.StartProcess(Path.Combine(PlaynitePaths.ProgramPath, "license.txt"));
             });
         }
+
+        public RelayCommand<object> NavigateUrlCommand => GlobalCommands.NavigateUrlCommand;
 
         public AboutViewModel(IWindowFactory window, IDialogsFactory dialogs, IResourceProvider resources)
         {
@@ -125,15 +139,9 @@ namespace Playnite.DesktopApp.ViewModels
             window.Close();
         }
 
-        public void NavigateUrl(string url)
-        {
-            System.Diagnostics.Process.Start(url);
-        }
-
         public void CreateDiagPackage()
         {
-            var model = new CrashHandlerViewModel(null, dialogs, resources, ApplicationMode.Desktop);
-            model.CreateDiagPackage();
+            CrashHandlerViewModel.CreateDiagPackage(dialogs);
         }
     }
 }

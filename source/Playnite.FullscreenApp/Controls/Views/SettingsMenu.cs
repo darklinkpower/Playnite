@@ -26,10 +26,14 @@ namespace Playnite.FullscreenApp.Controls.Views
     [TemplatePart(Name = "PART_ToggleBatteryPercentage", Type = typeof(ToggleButton))]
     [TemplatePart(Name = "PART_ToggleInstalledInQFilter", Type = typeof(ToggleButton))]
     [TemplatePart(Name = "PART_ToggleHorizontalLayout", Type = typeof(ToggleButton))]
+    [TemplatePart(Name = "PART_ToggleDarkenUninstalled", Type = typeof(ToggleButton))]
     [TemplatePart(Name = "PART_SliderColumns", Type = typeof(Slider))]
     [TemplatePart(Name = "PART_SliderRows", Type = typeof(Slider))]
     [TemplatePart(Name = "PART_SliderItemSpacing", Type = typeof(Slider))]
     [TemplatePart(Name = "PART_SelectButtonPrompts", Type = typeof(Selector))]
+    [TemplatePart(Name = "PART_ToggleBackgroundOnMain", Type = typeof(ToggleButton))]
+    [TemplatePart(Name = "PART_SliderBackgroundDarkenAmount", Type = typeof(Slider))]
+    [TemplatePart(Name = "PART_SliderBackgroundBlurAmount", Type = typeof(Slider))]
     public class SettingsMenu : Control
     {
         private FullscreenAppViewModel mainModel;
@@ -43,9 +47,13 @@ namespace Playnite.FullscreenApp.Controls.Views
         private ToggleButton ToggleBatteryPercentage;
         private ToggleButton ToggleInstalledInQFilter;
         private ToggleButton ToggleHorizontalLayout;
+        private ToggleButton ToggleDarkenUninstalled;
         private Slider SliderColumns;
         private Slider SliderRows;
         private Slider SliderItemSpacing;
+        private ToggleButton ToggleBackgroundOnMain;
+        private Slider SliderBackgroundDarkenAmount;
+        private Slider SliderBackgroundBlurAmount;
 
         static SettingsMenu()
         {
@@ -104,8 +112,8 @@ namespace Playnite.FullscreenApp.Controls.Views
                 if (SelectTeme != null)
                 {
                     SelectTeme.ItemsSource = mainModel.AppSettings.Fullscreen.AvailableThemes;
-                    SelectTeme.DisplayMemberPath = nameof(ThemeDescription.Name);
-                    SelectTeme.SelectedValuePath = nameof(ThemeDescription.DirectoryName);
+                    SelectTeme.DisplayMemberPath = nameof(ThemeManifest.Name);
+                    SelectTeme.SelectedValuePath = nameof(ThemeManifest.DirectoryName);
                     BindingTools.SetBinding(
                         SelectTeme,
                         Selector.SelectedValueProperty,
@@ -263,6 +271,76 @@ namespace Playnite.FullscreenApp.Controls.Views
                        nameof(FullscreenSettings.HorizontalLayout),
                        BindingMode.TwoWay,
                        UpdateSourceTrigger.PropertyChanged);
+                }
+
+                ToggleDarkenUninstalled = Template.FindName("PART_ToggleDarkenUninstalled", this) as ToggleButton;
+                if (ToggleDarkenUninstalled != null)
+                {
+                    BindingTools.SetBinding(
+                       ToggleDarkenUninstalled,
+                       ToggleButton.IsCheckedProperty,
+                       mainModel.AppSettings.Fullscreen,
+                       nameof(FullscreenSettings.DarkenUninstalledGamesGrid),
+                       BindingMode.TwoWay,
+                       UpdateSourceTrigger.PropertyChanged);
+                }
+
+                ToggleBackgroundOnMain = Template.FindName("PART_ToggleBackgroundOnMain", this) as ToggleButton;
+                if (ToggleBackgroundOnMain != null)
+                {
+                    BindingTools.SetBinding(
+                        ToggleBackgroundOnMain,
+                        ToggleButton.IsCheckedProperty,
+                        mainModel.AppSettings.Fullscreen,
+                        nameof(FullscreenSettings.EnableMainBackgroundImage),
+                        BindingMode.TwoWay,
+                        UpdateSourceTrigger.PropertyChanged);
+                }
+
+                SliderBackgroundDarkenAmount = Template.FindName("PART_SliderBackgroundDarkenAmount", this) as Slider;
+                if (SliderBackgroundDarkenAmount != null)
+                {
+                    SliderBackgroundDarkenAmount.Minimum = 0;
+                    SliderBackgroundDarkenAmount.Maximum = 100;
+                    SliderBackgroundDarkenAmount.TickFrequency = 5;
+                    SliderBackgroundDarkenAmount.IsSnapToTickEnabled = true;
+                    BindingTools.SetBinding(
+                       SliderBackgroundDarkenAmount,
+                       Slider.ValueProperty,
+                       mainModel.AppSettings.Fullscreen,
+                       nameof(FullscreenSettings.MainBackgroundImageDarkAmount),
+                       BindingMode.TwoWay,
+                       UpdateSourceTrigger.PropertyChanged);
+                    BindingTools.SetBinding(
+                         SliderBackgroundDarkenAmount,
+                         Slider.IsEnabledProperty,
+                         mainModel.AppSettings.Fullscreen,
+                         nameof(FullscreenSettings.EnableMainBackgroundImage),
+                         BindingMode.OneWay,
+                         UpdateSourceTrigger.PropertyChanged);
+                }
+
+                SliderBackgroundBlurAmount = Template.FindName("PART_SliderBackgroundBlurAmount", this) as Slider;
+                if (SliderBackgroundBlurAmount != null)
+                {
+                    SliderBackgroundBlurAmount.Minimum = 0;
+                    SliderBackgroundBlurAmount.Maximum = 100;
+                    SliderBackgroundBlurAmount.TickFrequency = 5;
+                    SliderBackgroundBlurAmount.IsSnapToTickEnabled = true;
+                    BindingTools.SetBinding(
+                       SliderBackgroundBlurAmount,
+                       Slider.ValueProperty,
+                       mainModel.AppSettings.Fullscreen,
+                       nameof(FullscreenSettings.MainBackgroundImageBlurAmount),
+                       BindingMode.TwoWay,
+                       UpdateSourceTrigger.PropertyChanged);
+                    BindingTools.SetBinding(
+                         SliderBackgroundBlurAmount,
+                         Slider.IsEnabledProperty,
+                         mainModel.AppSettings.Fullscreen,
+                         nameof(FullscreenSettings.EnableMainBackgroundImage),
+                         BindingMode.OneWay,
+                         UpdateSourceTrigger.PropertyChanged);
                 }
             }
         }

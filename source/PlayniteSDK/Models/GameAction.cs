@@ -31,8 +31,10 @@ namespace Playnite.SDK.Models
     /// <summary>
     /// Represents executable game action.
     /// </summary>
-    public class GameAction : ObservableObject
+    public class GameAction : ObservableObject, IEquatable<GameAction>
     {
+        private readonly Guid id = Guid.NewGuid();
+
         private GameActionType type;
         /// <summary>
         /// Gets or sets task type.
@@ -135,7 +137,7 @@ namespace Playnite.SDK.Models
         private bool isHandledByPlugin;
         /// <summary>
         /// Gets or sets value indicating wheter a action's execution should be handled by a plugin.
-        /// </summary>        
+        /// </summary>
         public bool IsHandledByPlugin
         {
             get => isHandledByPlugin;
@@ -149,7 +151,7 @@ namespace Playnite.SDK.Models
         private Guid emulatorId;
         /// <summary>
         /// Gets or sets emulator id for Emulator action type execution.
-        /// </summary>     
+        /// </summary>
         public Guid EmulatorId
         {
             get => emulatorId;
@@ -173,7 +175,7 @@ namespace Playnite.SDK.Models
                 OnPropertyChanged();
             }
         }
-        
+
         /// <inheritdoc/>
         public override string ToString()
         {
@@ -188,6 +190,85 @@ namespace Playnite.SDK.Models
                 default:
                     return Path;
             }
+        }
+
+        /// <summary>
+        /// Compares two <see cref="GameAction"/> objects for equality.
+        /// </summary>
+        /// <param name="obj1"></param>
+        /// <param name="obj2"></param>
+        /// <returns></returns>
+        public static bool Equals(GameAction obj1, GameAction obj2)
+        {
+            if (obj1 == null && obj2 == null)
+            {
+                return true;
+            }
+            else
+            {
+                return obj1?.Equals(obj2) == true;
+            }
+        }
+
+        /// <inheritdoc/>
+        public bool Equals(GameAction other)
+        {
+            if (other is null)
+            {
+                return false;
+            }
+
+            if (Type != other.Type)
+            {
+                return false;
+            }
+
+            if (!string.Equals(Arguments, other.Arguments, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!string.Equals(AdditionalArguments, other.AdditionalArguments, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!string.Equals(Path, other.Path, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!string.Equals(WorkingDir, other.WorkingDir, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!string.Equals(Name, other.Name, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (IsHandledByPlugin != other.IsHandledByPlugin)
+            {
+                return false;
+            }
+
+            if (EmulatorId != other.EmulatorId)
+            {
+                return false;
+            }
+
+            if (EmulatorProfileId != other.EmulatorProfileId)
+            {
+                return false;
+            }
+
+            if (OverrideDefaultArgs != other.OverrideDefaultArgs)
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }

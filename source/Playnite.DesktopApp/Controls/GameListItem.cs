@@ -70,7 +70,7 @@ namespace Playnite.DesktopApp.Controls
 
                 if (!DesignerProperties.GetIsInDesignMode(this))
                 {
-                    PanelHost.ContextMenu = new GameMenu(mainModel);
+                    PanelHost.ContextMenu = new GameMenu(mainModel) { ShowStartSection = true };
                     BindingTools.SetBinding(PanelHost.ContextMenu,
                         Button.DataContextProperty,
                         mainModel,
@@ -90,14 +90,16 @@ namespace Playnite.DesktopApp.Controls
                 var sourceBinding = new PriorityBinding();
                 sourceBinding.Bindings.Add(new Binding()
                 {
-                    Path = new PropertyPath(nameof(GamesCollectionViewEntry.IconObject)),
+                    Path = new PropertyPath(nameof(GamesCollectionViewEntry.DetailsListIconObjectCached)),
                     IsAsync = mainModel.AppSettings.AsyncImageLoading,
-                    Converter = new NullToDependencyPropertyUnsetConverter()
+                    Converter = new NullToDependencyPropertyUnsetConverter(),
+                    Mode = BindingMode.OneWay
                 });
                 sourceBinding.Bindings.Add(new Binding()
                 {
-                    Path = new PropertyPath(nameof(GamesCollectionViewEntry.DefaultIconObject)),
-                    Converter = new NullToDependencyPropertyUnsetConverter()
+                    Path = new PropertyPath(nameof(GamesCollectionViewEntry.DefaultDetailsListIconObjectCached)),
+                    Converter = new NullToDependencyPropertyUnsetConverter(),
+                    Mode = BindingMode.OneWay
                 });
 
                 BindingOperations.SetBinding(ImageIcon, Image.SourceProperty, sourceBinding);
@@ -109,14 +111,16 @@ namespace Playnite.DesktopApp.Controls
                 var sourceBinding = new PriorityBinding();
                 sourceBinding.Bindings.Add(new Binding()
                 {
-                    Path = new PropertyPath(nameof(GamesCollectionViewEntry.CoverImageObject)),
+                    Path = new PropertyPath(nameof(GamesCollectionViewEntry.GridViewCoverObjectCached)),
                     IsAsync = mainModel.AppSettings.AsyncImageLoading,
-                    Converter = new NullToDependencyPropertyUnsetConverter()
+                    Converter = new NullToDependencyPropertyUnsetConverter(),
+                    Mode = BindingMode.OneWay
                 });
                 sourceBinding.Bindings.Add(new Binding()
                 {
-                    Path = new PropertyPath(nameof(GamesCollectionViewEntry.DefaultCoverImageObject)),
-                    Converter = new NullToDependencyPropertyUnsetConverter()
+                    Path = new PropertyPath(nameof(GamesCollectionViewEntry.DefaultGridViewCoverObjectCached)),
+                    Converter = new NullToDependencyPropertyUnsetConverter(),
+                    Mode = BindingMode.OneWay
                 });
 
                 BindingOperations.SetBinding(ImageCover, Image.SourceProperty, sourceBinding);

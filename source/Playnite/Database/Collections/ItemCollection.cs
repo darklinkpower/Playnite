@@ -1,4 +1,5 @@
-﻿using Playnite.Common;
+﻿using Newtonsoft.Json;
+using Playnite.Common;
 using Playnite.SDK;
 using Playnite.SDK.Models;
 using System;
@@ -30,7 +31,9 @@ namespace Playnite.Database
         public int Count => Items.Count;
 
         public bool IsReadOnly => false;
-        
+
+        public GameDatabaseCollection CollectionType { get; } = GameDatabaseCollection.Uknown;
+
         public TItem this[Guid id]
         {
             get => Get(id);
@@ -44,25 +47,29 @@ namespace Playnite.Database
 
         public event EventHandler<ItemUpdatedEventArgs<TItem>> ItemUpdated;
 
-        public ItemCollection(bool isPersistent = true)
+        internal bool IsEventsEnabled { get; set; } = true;
+
+        public ItemCollection(bool isPersistent = true, GameDatabaseCollection type = GameDatabaseCollection.Uknown)
         {
             this.isPersistent = isPersistent;
             Items = new ConcurrentDictionary<Guid, TItem>();
+            CollectionType = type;
         }
 
-        public ItemCollection(Action<TItem> initMethod, bool isPersistent = true) : this(isPersistent)
+        public ItemCollection(Action<TItem> initMethod, bool isPersistent = true, GameDatabaseCollection type = GameDatabaseCollection.Uknown) : this(isPersistent, type)
         {
             this.initMethod = initMethod;
         }
 
-        public ItemCollection(string path)
+        public ItemCollection(string path, GameDatabaseCollection type = GameDatabaseCollection.Uknown)
         {
             this.isPersistent = true;
             Items = new ConcurrentDictionary<Guid, TItem>();
             InitializeCollection(path);
+            CollectionType = type;
         }
 
-        public ItemCollection(string path, Action<TItem> initMethod) : this(path)
+        public ItemCollection(string path, Action<TItem> initMethod, GameDatabaseCollection type = GameDatabaseCollection.Uknown) : this(path, type)
         {
             this.initMethod = initMethod;
         }
@@ -75,21 +82,49 @@ namespace Playnite.Database
             }
 
             storagePath = path;
+            // This fixes an issue where people mess up their library with custom scripts
+            // which create collection files instead of directories :|
+            if (File.Exists(storagePath))
+            {
+                File.Delete(storagePath);
+            }
+
             if (Directory.Exists(storagePath))
             {
-                Parallel.ForEach(Directory.EnumerateFiles(storagePath, "*.json"), (objectFile) =>
-                {
-                    try
+                Parallel.ForEach(
+                    Directory.EnumerateFiles(storagePath, "*.json"),
+                    new ParallelOptions { MaxDegreeOfParallelism = 4 },
+                    (objectFile) =>
                     {
-                        var obj = Serialization.FromJson<TItem>(FileSystem.ReadFileAsStringSafe(objectFile));
-                        initMethod?.Invoke(obj);
-                        Items.TryAdd(obj.Id, obj);
-                    }
-                    catch (Exception e) when (!PlayniteEnvironment.ThrowAllErrors)
-                    {
-                        logger.Error(e, $"Failed to load item from {objectFile}");
-                    }
-                });
+                        if (Guid.TryParse(Path.GetFileNameWithoutExtension(objectFile), out var _))
+                        {
+                            try
+                            {
+                                var obj = Serialization.FromJsonFile<TItem>(objectFile);
+                                if (obj != null)
+                                {
+                                    initMethod?.Invoke(obj);
+                                    Items.TryAdd(obj.Id, obj);
+                                }
+                                else
+                                {
+                                    logger.Warn($"Failed to deserialize collection item {objectFile}");
+                                }
+                            }
+                            catch (Exception e) when (!PlayniteEnvironment.ThrowAllErrors)
+                            {
+                                logger.Error(e, $"Failed to load item from {objectFile}");
+                            }
+                        }
+                        else
+                        {
+                            logger.Warn($"Skipping non-id collection item {objectFile}");
+                        }
+                    });
+            }
+            else
+            {
+                FileSystem.CreateDirectory(storagePath);
             }
         }
 
@@ -100,12 +135,27 @@ namespace Playnite.Database
 
         internal void SaveItemData(TItem item)
         {
-            FileSystem.WriteStringToFileSafe(GetItemFilePath(item.Id), Serialization.ToJson(item, false));
+            using (var fs = FileSystem.CreateWriteFileStreamSafe(GetItemFilePath(item.Id)))
+            using (var sw = new StreamWriter(fs))
+            using (var writer = new JsonTextWriter(sw))
+            {
+                var ser = JsonSerializer.Create(new JsonSerializerSettings()
+                {
+                    Formatting = Formatting.None,
+                    NullValueHandling = NullValueHandling.Ignore,
+                    DefaultValueHandling = DefaultValueHandling.Ignore
+                });
+
+                ser.Serialize(writer, item);
+            }
         }
 
         internal TItem GetItemData(Guid id)
         {
-            return Serialization.FromJson<TItem>(FileSystem.ReadFileAsStringSafe(GetItemFilePath(id)));
+            using (var fs = FileSystem.OpenReadFileStreamSafe(GetItemFilePath(id)))
+            {
+                return Serialization.FromJsonStream<TItem>(fs);
+            }
         }
 
         public TItem Get(Guid id)
@@ -120,10 +170,30 @@ namespace Playnite.Database
             }
         }
 
-        public virtual TItem Add(string itemName)
+        public bool ContainsItem(Guid id)
+        {
+            return Items?.ContainsKey(id) == true;
+        }
+
+        public List<TItem> Get(IList<Guid> ids)
+        {
+            var items = new List<TItem>(ids.Count);
+            foreach (var id in ids)
+            {
+                var item = Get(id);
+                if (item != null)
+                {
+                    items.Add(item);
+                }
+            }
+
+            return items;
+        }
+
+        public virtual TItem Add(string itemName, Func<TItem, string, bool> existingComparer)
         {
             if (string.IsNullOrEmpty(itemName)) throw new ArgumentNullException(nameof(itemName));
-            var existingItem = this.FirstOrDefault(a => a.Name.Equals(itemName, StringComparison.InvariantCultureIgnoreCase));
+            var existingItem = this.FirstOrDefault(a => existingComparer(a, itemName));
             if (existingItem != null)
             {
                 return existingItem;
@@ -136,12 +206,17 @@ namespace Playnite.Database
             }
         }
 
-        public virtual IEnumerable<TItem> Add(List<string> itemsToAdd)
+        public virtual TItem Add(string itemName)
+        {
+            return Add(itemName, (existingItem, newName) => existingItem.Name.Equals(newName, StringComparison.InvariantCultureIgnoreCase));
+        }
+
+        public virtual IEnumerable<TItem> Add(List<string> itemsToAdd, Func<TItem, string, bool> existingComparer)
         {
             var toAdd = new List<TItem>();
             foreach (var itemName in itemsToAdd)
             {
-                var existingItem = this.FirstOrDefault(a => a.Name.Equals(itemName, StringComparison.InvariantCultureIgnoreCase));
+                var existingItem = this.FirstOrDefault(a => existingComparer(a, itemName));
                 if (existingItem != null)
                 {
                     yield return existingItem;
@@ -158,6 +233,11 @@ namespace Playnite.Database
             {
                 Add(toAdd);
             }
+        }
+
+        public virtual IEnumerable<TItem> Add(List<string> itemsToAdd)
+        {
+            return Add(itemsToAdd, (existingItem, newName) => existingItem.Name.Equals(newName, StringComparison.InvariantCultureIgnoreCase));
         }
 
         public virtual void Add(TItem itemToAdd)
@@ -263,16 +343,34 @@ namespace Playnite.Database
 
             OnCollectionChanged(new List<TItem>(), itemsToRemove.ToList());
             return true;
-        }        
+        }
 
         public virtual void Update(TItem itemToUpdate)
-        {            
-            TItem oldData;
+        {
+            TItem oldData = null;
+            TItem loadedItem;
             lock (collectionLock)
             {
                 if (isPersistent)
                 {
-                    oldData = GetItemData(itemToUpdate.Id);
+                    try
+                    {
+                        oldData = GetItemData(itemToUpdate.Id);
+                    }
+                    catch (Exception e) when (!PlayniteEnvironment.ThrowAllErrors)
+                    {
+                        logger.Error(e, "Failed to read stored item data.");
+                    }
+
+                    // This should never ever happen, but there are automatic crash reports of Playnite db files being corrupted.
+                    // This happens because of trash launchers from games like Zula,
+                    // which mess with Playnite process and dump their log entries to our files.
+                    // This will most likely cause some other issues, but at least it won't crash the whole app.
+                    if (oldData == null)
+                    {
+                        logger.Error("Failed to read stored item data.");
+                        oldData = this[itemToUpdate.Id].GetClone();
+                    }
                 }
                 else
                 {
@@ -289,14 +387,14 @@ namespace Playnite.Database
                     SaveItemData(itemToUpdate);
                 }
 
-                var loadedItem = Get(itemToUpdate.Id);
+                loadedItem = Get(itemToUpdate.Id);
                 if (!ReferenceEquals(loadedItem, itemToUpdate))
                 {
-                    itemToUpdate.CopyProperties(loadedItem, true, null, true);
+                    itemToUpdate.CopyDiffTo(loadedItem);
                 }
             }
 
-            OnItemUpdated(new List<ItemUpdateEvent<TItem>>() { new ItemUpdateEvent<TItem>(oldData, itemToUpdate) });
+            OnItemUpdated(new List<ItemUpdateEvent<TItem>>() { new ItemUpdateEvent<TItem>(oldData, loadedItem) });
         }
 
         public virtual void Update(IEnumerable<TItem> itemsToUpdate)
@@ -309,7 +407,19 @@ namespace Playnite.Database
                     TItem oldData;
                     if (isPersistent)
                     {
-                        oldData = GetItemData(item.Id);
+                        try
+                        {
+                            oldData = GetItemData(item.Id);
+                        }
+                        catch (Exception e) when (!PlayniteEnvironment.ThrowAllErrors)
+                        {
+                            // This should never ever happen, but there are automatic crash reports of Playnite db files being corrupted.
+                            // This happens because of trash launchers from games like Zula,
+                            // which mess with Playnite process and dump their log entries to our files.
+                            // This will most likely cause some other issues, but at least it won't crash the whole app.
+                            logger.Error(e, "Failed to read stored item data.");
+                            oldData = this[item.Id].GetClone();
+                        }
                     }
                     else
                     {
@@ -329,7 +439,7 @@ namespace Playnite.Database
                     var loadedItem = Get(item.Id);
                     if (!ReferenceEquals(loadedItem, item))
                     {
-                        item.CopyProperties(loadedItem, true, null, true);
+                        item.CopyDiffTo(loadedItem);
                     }
 
                     updates.Add(new ItemUpdateEvent<TItem>(oldData, loadedItem));
@@ -366,6 +476,11 @@ namespace Playnite.Database
 
         internal void OnCollectionChanged(List<TItem> addedItems, List<TItem> removedItems)
         {
+            if (!IsEventsEnabled)
+            {
+                return;
+            }
+
             if (!isEventBufferEnabled)
             {
                 ItemCollectionChanged?.Invoke(this, new ItemCollectionChangedEventArgs<TItem>(addedItems, removedItems));
@@ -379,6 +494,11 @@ namespace Playnite.Database
 
         internal void OnItemUpdated(IEnumerable<ItemUpdateEvent<TItem>> updates)
         {
+            if (!IsEventsEnabled)
+            {
+                return;
+            }
+
             if (!isEventBufferEnabled)
             {
                 ItemUpdated?.Invoke(this, new ItemUpdatedEventArgs<TItem>(updates));

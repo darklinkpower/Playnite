@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json.Linq;
 using OriginLibrary.Models;
 using OriginLibrary.Services;
+using Playnite.Common.Media.Icons;
 using Playnite.SDK;
 using Playnite.SDK.Metadata;
 using Playnite.SDK.Models;
@@ -17,17 +18,18 @@ namespace OriginLibrary
 {
     public class OriginMetadataProvider : LibraryMetadataProvider
     {
-        private readonly IPlayniteAPI api;
+        private readonly OriginLibrary library;
 
-        public OriginMetadataProvider(IPlayniteAPI api)
+        public OriginMetadataProvider(OriginLibrary library)
         {
-            this.api = api;
+            this.library = library;
         }
 
         #region IMetadataProvider
 
         public override GameMetadata GetMetadata(Game game)
         {
+            var resources = library.PlayniteApi.Resources;
             var storeMetadata = DownloadGameMetadata(game.GameId);
             var gameInfo = new GameInfo
             {
@@ -36,7 +38,7 @@ namespace OriginLibrary
                 ReleaseDate = storeMetadata.StoreDetails.platforms.First(a => a.platform == "PCWIN").releaseDate,
                 Links = new List<Link>()
                 {
-                    new Link("Store", @"https://www.origin.com/store" + storeMetadata.StoreDetails.offerPath),
+                    new Link(resources.GetString("LOCCommonLinksStorePage"), @"https://www.origin.com/store" + storeMetadata.StoreDetails.offerPath),
                     new Link("PCGamingWiki", @"http://pcgamingwiki.com/w/index.php?search=" + game.Name)
                 }
             };
@@ -66,7 +68,7 @@ namespace OriginLibrary
 
             if (!string.IsNullOrEmpty(storeMetadata.StoreDetails.i18n.gameForumURL))
             {
-                gameInfo.Links.Add(new Link("Forum", storeMetadata.StoreDetails.i18n.gameForumURL));
+                gameInfo.Links.Add(new Link(resources.GetString("LOCCommonLinksForum"), storeMetadata.StoreDetails.i18n.gameForumURL));
             }
 
             if (!string.IsNullOrEmpty(storeMetadata.StoreDetails.i18n.gameManualURL))
@@ -81,33 +83,6 @@ namespace OriginLibrary
                         Name = "Manual"
                     }
                 };
-            }
-
-            // There's not icon available on Origin servers so we will load one from EXE
-            if (game.IsInstalled && string.IsNullOrEmpty(game.Icon))
-            {
-                var playAction = api.ExpandGameVariables(game, game.PlayAction);
-                var executable = string.Empty;
-                if (File.Exists(playAction.Path))
-                {
-                    executable = playAction.Path;
-                }
-                else if (!string.IsNullOrEmpty(playAction.WorkingDir))
-                {
-                    executable = Path.Combine(playAction.WorkingDir, playAction.Path);
-                }
-
-                if (string.IsNullOrEmpty(executable))
-                {
-                    return storeMetadata;
-                }
-
-                var exeIcon = IconExtension.ExtractIconFromExe(executable, true);
-                if (exeIcon != null)
-                {
-                    var iconName = Guid.NewGuid() + ".png";
-                    metadata.Icon = new MetadataFile(iconName, exeIcon.ToByteArray(System.Drawing.Imaging.ImageFormat.Png));
-                }
             }
 
             return metadata;

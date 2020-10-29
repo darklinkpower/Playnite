@@ -1,3 +1,72 @@
+### To get automatically notified about SDK changes, you can subscribe to [change tracking issue](https://github.com/JosefNemec/Playnite/issues/1425) on GitHub.
+
+#### 5.5.0
+
+* New
+  * Ability to change progress text when using [ActivateGlobalProgress](xref:Playnite.SDK.IDialogsFactory)
+  * `CurrentExtensionInstallPath` and `CurrentExtensionDataPath` global variables for script extensions
+  
+#### 5.4.0
+
+* New
+  * [ActivateGlobalProgress](xref:Playnite.SDK.IDialogsFactory) can now report specific progress status.
+  * [CanExecuteJavascriptInMainFrame](xref:Playnite.SDK.IWebView) property for WebViews.
+  * Various [data serialization methods](xref:Playnite.SDK.Data.Serialization) (JSON, YAML, TOML)
+  * [CreateWindow](xref:Playnite.SDK.IDialogsFactory) for creating native Playnite windows with styling.
+  * [GetCurrentAppWindow](xref:Playnite.SDK.IDialogsFactory) to get currently active Playnite window.
+
+#### 5.3.0
+
+* **Breaking Changes**:
+  * Playnite will no longer load plugins that reference non-SDK Playnite assemblies. See [this page](tutorials/plugins/plugins.md#referencing-playnite-assemblies) for more information.
+  * Playnite will no longer install extensions and themes that don't have proper version specified. The version string must a valid [.NET version string](https://docs.microsoft.com/en-us/dotnet/api/system.version)!
+
+* **Now obsolete**:
+
+  * These changes do not break compatibility in current version (mentioned methods are still available in SDK), but they will be made breaking in future major Playnite updates.
+  * Added `Id` to extension and theme [manifests](tutorials/extensionsManifest.md). This field is currently not mandatory for existing extensions (Playnite 8 will load installed extensions without an ID, but will not install new ones without an ID), but should be provided for better extension installation and update support. Toolbox will not pack new extensions unless `Id` is present.
+  * The way custom menu items are implemented (for main menu and game menu) has been completely changed (the old system still works temporarily). See [related documentation page](tutorials/menus.md) for more information.
+  * [NavigationChanged](xref:Playnite.SDK.IWebView) from IWebView is now obsolete, use new `LoadingChanged` instead.
+
+* New
+  * Metadata plugins can now provide `Features`, `AgeRating`, `Series`, `Region` and `Platform` data.
+  * Extensions can now provide [custom menu items](tutorials/menus.md) for game menus, including nested entries.
+  * Most useful Playnite settings are now exposed in [IPlayniteSettingsAPI](xref:Playnite.SDK.IPlayniteSettingsAPI).
+  * [ActivateGlobalProgress](xref:Playnite.SDK.IDialogsFactory) method to show blocking progress dialog.
+  * [LoadingChanged](xref:Playnite.SDK.IWebView) event for WebViews.
+  * [EvaluateScriptAsync](xref:Playnite.SDK.IWebView) method to execute JS code in a WebView.
+  * [GetCookies](xref:Playnite.SDK.IWebView) method to get webview cookies.
+  * [MarkdownToHtml](xref:Playnite.SDK.Data.Markup.MarkdownToHtml(System.String)) method for converting Markdown markup to HTML.
+
+#### 5.2.0
+
+* **Breaking Changes**:
+  * [Toolbox](tutorials/toolbox.md) utility has been reworked and accepts different arguments then previously.
+
+* New
+  * Library plugins can now support extra [capabilities](tutorials/plugins/libraryPlugins.md#capabilities).
+  * Added [ImportGame](xref:Playnite.SDK.IGameDatabase.ImportGame(Playnite.SDK.Models.GameInfo)) methods to more easily add new games to the library.
+  * Added [OpenPluginSettings](xref:Playnite.SDK.IMainViewAPI.OpenPluginSettings(System.Guid)) method to open view with extension settings (also accessible via `OpenSettingsView` method inherited from `Plugin` class).
+  * Added [StartGame](xref:Playnite.SDK.IPlayniteAPI.StartGame(System.Guid)).
+  * Added [UriHandler](xref:Playnite.SDK.IPlayniteAPI.UriHandler) for registering of custom [URI method actions](tutorials/plugins/uriSupport.md).
+  * Added option settings when creating offscreen web view (currently only option to disable JavaScript execution).
+  * Added `OnGameSelected`, `OnApplicationStopped` and `OnLibraryUpdated` events.
+  * Added `Features` game field and appropriate support for it in metadata plugins.
+  * [Toolbox](tutorials/toolbox.md) utility can now generate plugins and scripts.
+  * [Toolbox](tutorials/toolbox.md) utility can pack plugins and scripts into `.pext` file that can be used for easier distribution and installation.
+
+#### 5.1.0
+
+* New
+  * Added support for creating metadata providers via [plugins](tutorials/plugins/metadataPlugins.md).
+  * [ChooseImageFile](xref:Playnite.SDK.IDialogsFactory) method for dialogs API. **Only available in Desktop mode.**
+  * [ChooseItemWithSearch](xref:Playnite.SDK.IDialogsFactory) method for dialogs API. **Only available in Desktop mode.**
+
+#### 5.0.1
+
+* Removed reference to LiteDB package. You can remove it from your plugin project if it's present.
+
+
 #### 5.0.0
 
 * **Breaking Changes**:

@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Playnite.SDK.Events;
 using Playnite.SDK.Models;
 using System;
 using System.Collections.Generic;
@@ -63,6 +64,7 @@ namespace Playnite.SDK.Plugins
         /// Returns list of plugin functions.
         /// </summary>
         /// <returns></returns>
+        [Obsolete("Use GetGameMenuItems and GetMainMenuItems methods.")]
         public virtual IEnumerable<ExtensionFunction> GetFunctions()
         {
             return null;
@@ -110,10 +112,52 @@ namespace Playnite.SDK.Plugins
         }
 
         /// <summary>
+        /// Called when game selection changed.
+        /// </summary>
+        /// <param name="args"></param>
+        public virtual void OnGameSelected(GameSelectionEventArgs args)
+        {
+        }
+
+        /// <summary>
         /// Called when appliaction is started and initialized.
         /// </summary>
         public virtual void OnApplicationStarted()
         {
+        }
+
+        /// <summary>
+        /// Called when appliaction is stutting down.
+        /// </summary>
+        public virtual void OnApplicationStopped()
+        {
+        }
+
+        /// <summary>
+        /// Called library update has been finished.
+        /// </summary>
+        public virtual void OnLibraryUpdated()
+        {
+        }
+
+        /// <summary>
+        /// Gets list of items to be displayed in game's context menu.
+        /// </summary>
+        /// <param name="args">Contextual arguments.</param>
+        /// <returns>List of menu items to be displayed in game menu.</returns>
+        public virtual List<GameMenuItem> GetGameMenuItems(GetGameMenuItemsArgs args)
+        {
+            return null;
+        }
+
+        /// <summary>
+        /// Gets list of items to be displayed in Playnite's main menu.
+        /// </summary>
+        /// <param name="args">Contextual arguments.</param>
+        /// <returns>List of menu items to be displayed in Playnite's main menu.</returns>
+        public virtual List<MainMenuItem> GetMainMenuItems(GetMainMenuItemsArgs args)
+        {
+            return null;
         }
 
         /// <summary>
@@ -138,7 +182,6 @@ namespace Playnite.SDK.Plugins
         /// <returns>Plugin configuration.</returns>
         public TConfig GetPluginConfiguration<TConfig>() where TConfig : class
         {
-
             var pluginDir = Path.GetDirectoryName(GetType().Assembly.Location);
             var pluginConfig = Path.Combine(pluginDir, "plugin.cfg");
             if (File.Exists(pluginConfig))
@@ -149,7 +192,6 @@ namespace Playnite.SDK.Plugins
             {
                 return null;
             }
-
         }
 
         /// <summary>
@@ -187,6 +229,20 @@ namespace Playnite.SDK.Plugins
 
             var strConf = JsonConvert.SerializeObject(settings, Formatting.Indented);
             File.WriteAllText(setFile, strConf);
+        }
+
+        /// <summary>
+        /// Opens plugin's settings view. Only works in Desktop application mode!
+        /// </summary>
+        /// <returns>True if user saved any changes, False if dialog was canceled.</returns>
+        public bool OpenSettingsView()
+        {
+            if (PlayniteApi.ApplicationInfo.Mode == ApplicationMode.Fullscreen)
+            {
+                return false;
+            }
+
+            return PlayniteApi.MainView.OpenPluginSettings(Id);
         }
     }
 }

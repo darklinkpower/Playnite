@@ -26,7 +26,7 @@
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>none</DebugType>
+    <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
@@ -34,8 +34,13 @@
     <WarningLevel>4</WarningLevel>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <LangVersion>7.3</LangVersion>
+    <DebugSymbols>true</DebugSymbols>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Markdig, Version=0.18.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Markdig.0.18.0\lib\net40\Markdig.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.WindowsAPICodePack, Version=1.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\WindowsAPICodePack.1.1.0\lib\Microsoft.WindowsAPICodePack.dll</HintPath>
     </Reference>
@@ -91,7 +96,7 @@
     </Reference>
     <Reference Include="WindowsBase" />
     <Reference Include="YamlDotNet, Version=5.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\YamlDotNet.5.2.1\lib\net45\YamlDotNet.dll</HintPath>
+      <HintPath>..\packages\YamlDotNet.5.4.0\lib\net45\YamlDotNet.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -100,17 +105,23 @@
     <Compile Include="DesignerTools.cs" />
     <Compile Include="Exceptions.cs" />
     <Compile Include="Extensions\BitmapExtensions.cs" />
+    <Compile Include="Extensions\BitmapIconExtensions.cs" />
     <Compile Include="Extensions\CloneObject.cs" />
     <Compile Include="Extensions\Enums.cs" />
     <Compile Include="Extensions\ItemsControlExtensions.cs" />
     <Compile Include="Extensions\IconExtension.cs" />
-    <Compile Include="Extensions\ListExtensions.cs" />
+    <Compile Include="Extensions\LongExtensions.cs" />
     <Compile Include="Extensions\ObjectExtensions.cs" />
     <Compile Include="Extensions\StringExtensions.cs" />
+    <Compile Include="Extensions\WindowExtensions.cs" />
+    <Compile Include="GlobalRandom.cs" />
     <Compile Include="Images.cs" />
     <Compile Include="IniParser.cs" />
     <Compile Include="InteropMethods.cs" />
     <Compile Include="ItemsSource.cs" />
+    <Compile Include="MarkupConverter.cs" />
+    <Compile Include="Media\Icons\IconExtractor.cs" />
+    <Compile Include="Media\Icons\IconUtil.cs" />
     <Compile Include="MemoryCache.cs" />
     <Compile Include="Explorer.cs" />
     <Compile Include="NLogLogProvider.cs" />
@@ -127,6 +138,7 @@
     <Compile Include="ProcessStarter.cs" />
     <Compile Include="Programs.cs" />
     <Compile Include="SafeFileEnumerator.cs" />
+    <Compile Include="SigningTools.cs" />
     <Compile Include="Sizes.cs" />
     <Compile Include="Sqlite.cs" />
     <Compile Include="SystemDialogs.cs" />

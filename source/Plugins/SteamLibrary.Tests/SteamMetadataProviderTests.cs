@@ -3,6 +3,7 @@ using NUnit.Framework;
 using Playnite.SDK;
 using Playnite.SDK.Models;
 using Playnite.Tests;
+using Steam;
 using SteamLibrary.Services;
 using System;
 using System.Collections.Generic;
@@ -19,9 +20,7 @@ namespace SteamLibrary.Tests
         public void StandardDownloadTest()
         {
             var provider = new SteamMetadataProvider(
-                null,
-                new SteamLibrary(PlayniteTests.GetTestingApi().Object, null),
-                new SteamApiClient());
+                new SteamLibrary(PlayniteTests.GetTestingApi().Object, null));
             var data = provider.GetMetadata(new Game() { GameId = "578080" });
             Assert.IsNotNull(data.GameInfo);
             Assert.IsNotNull(data.Icon);
@@ -31,10 +30,19 @@ namespace SteamLibrary.Tests
             Assert.IsFalse(string.IsNullOrEmpty(data.GameInfo.Description));
             CollectionAssert.IsNotEmpty(data.GameInfo.Publishers);
             CollectionAssert.IsNotEmpty(data.GameInfo.Developers);
-            CollectionAssert.IsNotEmpty(data.GameInfo.Tags);
+            CollectionAssert.IsNotEmpty(data.GameInfo.Features);
             CollectionAssert.IsNotEmpty(data.GameInfo.Genres);
             CollectionAssert.IsNotEmpty(data.GameInfo.Links);
             CollectionAssert.IsNotEmpty(data.GameInfo.Publishers);
+        }
+
+        [Test]
+        public void VRMetadataTest()
+        {
+            var provider = new SteamMetadataProvider(
+                new SteamLibrary(PlayniteTests.GetTestingApi().Object, null));
+            var data = provider.GetMetadata(new Game() { GameId = "378860" });
+            Assert.IsTrue(data.GameInfo.Features.Contains("VR"));
         }
     }
 }

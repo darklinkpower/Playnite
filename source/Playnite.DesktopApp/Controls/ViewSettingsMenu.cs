@@ -36,33 +36,6 @@ namespace Playnite.DesktopApp.Controls
             InitializeItems();
         }
 
-        private void SetEnumBinding(MenuItem target, string bindingPath, object bindingSource, object bindingEnum)
-        {
-            BindingOperations.SetBinding(target, MenuItem.IsCheckedProperty,
-                new Binding
-                {
-                    Source = bindingSource,
-                    Path = new PropertyPath(bindingPath),
-                    Converter = new EnumToBooleanConverter(),
-                    ConverterParameter = bindingEnum
-                });
-        }
-
-        private void PopulateEnumOptions(ItemCollection parent, Type enumType, string bindingPath, object bindingSource)
-        {
-            foreach (Enum type in Enum.GetValues(enumType))
-            {
-                var item = new MenuItem
-                {
-                    Header = type.GetDescription(),
-                    IsCheckable = true
-                };
-
-                SetEnumBinding(item, bindingPath, bindingSource, type);
-                parent.Add(item);
-            }
-        }
-
         public void InitializeItems()
         {
             if (settings == null)
@@ -78,9 +51,9 @@ namespace Playnite.DesktopApp.Controls
                 Header = ResourceProvider.GetString("LOCMenuSortByTitle")
             };
 
-            PopulateEnumOptions(sortItem.Items, typeof(SortOrderDirection), nameof(settings.ViewSettings.SortingOrderDirection), settings.ViewSettings);
+            MenuHelpers.PopulateEnumOptions<SortOrderDirection>(sortItem.Items, nameof(settings.ViewSettings.SortingOrderDirection), settings.ViewSettings);
             sortItem.Items.Add(new Separator());
-            PopulateEnumOptions(sortItem.Items, typeof(SortOrder), nameof(settings.ViewSettings.SortingOrder), settings.ViewSettings);
+            MenuHelpers.PopulateEnumOptions<SortOrder>(sortItem.Items, nameof(settings.ViewSettings.SortingOrder), settings.ViewSettings, true);
 
             // Group By
             var groupItem = new MenuItem
@@ -88,14 +61,19 @@ namespace Playnite.DesktopApp.Controls
                 Header = ResourceProvider.GetString("LOCMenuGroupByTitle")
             };
 
-            PopulateEnumOptions(groupItem.Items, typeof(GroupableField), nameof(settings.ViewSettings.GroupingOrder), settings.ViewSettings);
+            var dontGroupItem = MainMenu.AddMenuChild(groupItem.Items, GroupableField.None.GetDescription(), null);
+            dontGroupItem.IsCheckable = true;
+            MenuHelpers.SetEnumBinding(dontGroupItem, nameof(settings.ViewSettings.GroupingOrder), settings.ViewSettings, GroupableField.None);
+            groupItem.Items.Add(new Separator());
+            MenuHelpers.PopulateEnumOptions<GroupableField>(groupItem.Items, nameof(settings.ViewSettings.GroupingOrder), settings.ViewSettings, true,
+                new List<GroupableField> { GroupableField.None });
 
             Items.Add(sortItem);
             Items.Add(groupItem);
-            Items.Add(new Separator());                
+            Items.Add(new Separator());
 
             // View Type
-            PopulateEnumOptions(Items, typeof(ViewType), nameof(settings.ViewSettings.GamesViewType), settings.ViewSettings);
+            MenuHelpers.PopulateEnumOptions<ViewType>(Items, nameof(settings.ViewSettings.GamesViewType), settings.ViewSettings);
             Items.Add(new Separator());
 
             // View

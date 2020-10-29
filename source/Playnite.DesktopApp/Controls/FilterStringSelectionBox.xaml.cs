@@ -46,24 +46,31 @@ namespace Playnite.DesktopApp.Controls
         private static void ItemsListPropertyChangedCallback(DependencyObject sender, DependencyPropertyChangedEventArgs e)
         {
             var obj = sender as FilterStringSelectionBox;
+            var oldVal = (SelectableStringList)e.NewValue;
+            if (oldVal != null)
+            {
+                oldVal.SelectionChanged -= obj.List_SelectionChanged;
+            }
+
             var list = (SelectableStringList)e.NewValue;
             obj.IgnoreChanges = true;
-            list.SelectionChanged += (s, a) =>
-            {
-                if (!obj.IgnoreChanges)
-                {
-                    obj.IgnoreChanges = true;
-                    obj.FilterProperties = new StringFilterItemProperites(list.GetSelectedItems());
-                    obj.IgnoreChanges = false;
-                }
-            };
-
+            list.SelectionChanged += obj.List_SelectionChanged;
             if (obj.FilterProperties != null)
             {
                 list.SetSelection(obj.FilterProperties.Values);
             }
 
             obj.IgnoreChanges = false;
+        }
+
+        private void List_SelectionChanged(object sender, EventArgs e)
+        {
+            if (!IgnoreChanges)
+            {
+                IgnoreChanges = true;
+                FilterProperties = new StringFilterItemProperites(ItemsList.GetSelectedItems());
+                IgnoreChanges = false;
+            }
         }
 
         public StringFilterItemProperites FilterProperties

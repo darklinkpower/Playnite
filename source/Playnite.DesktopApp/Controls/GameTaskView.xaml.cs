@@ -156,7 +156,7 @@ namespace Playnite.DesktopApp.Controls
             set
             {
                 selectedEmulatorArguments = value;
-                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("SelectedEmulatorArguments"));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedEmulatorArguments)));
             }
         }
 
@@ -173,7 +173,8 @@ namespace Playnite.DesktopApp.Controls
             }
         }
 
-        public static readonly DependencyProperty EmulatorsProperty = DependencyProperty.Register("Emulators", typeof(List<Emulator>), typeof(GameTaskView));
+        public static readonly DependencyProperty EmulatorsProperty =
+            DependencyProperty.Register(nameof(Emulators), typeof(List<Emulator>), typeof(GameTaskView));
 
         public bool ShowNameRow
         {
@@ -188,7 +189,24 @@ namespace Playnite.DesktopApp.Controls
             }
         }
 
-        public static readonly DependencyProperty ShowNameRowProperty = DependencyProperty.Register("ShowNameRow", typeof(bool), typeof(GameTaskView));
+        public static readonly DependencyProperty ShowNameRowProperty = 
+            DependencyProperty.Register(nameof(ShowNameRow), typeof(bool), typeof(GameTaskView));
+
+        public string DefaultSelectionDir
+        {
+            get
+            {
+                return (string)GetValue(DefaultSelectionDirProperty);
+            }
+
+            set
+            {
+                SetValue(DefaultSelectionDirProperty, value);
+            }
+        }
+
+        public static readonly DependencyProperty DefaultSelectionDirProperty =
+            DependencyProperty.Register(nameof(DefaultSelectionDir), typeof(string), typeof(GameTaskView));
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -204,7 +222,7 @@ namespace Playnite.DesktopApp.Controls
 
         private void ButtonBrowsePath_Click(object sender, RoutedEventArgs e)
         {
-            var path = SystemDialogs.SelectFile(Window.GetWindow(this), "*.*|*.*");
+            var path = SystemDialogs.SelectFile(Window.GetWindow(this), "*.*|*.*", DefaultSelectionDir);
             if (string.IsNullOrEmpty(path))
             {
                 return;
@@ -220,17 +238,22 @@ namespace Playnite.DesktopApp.Controls
 
         private void NotifyRowChange()
         {
-            OnPropertyChanged("ShowArgumentsRow");
-            OnPropertyChanged("ShowAdditionalArgumentsRow");
-            OnPropertyChanged("ShowDefaultArgumentsRow");
-            OnPropertyChanged("ShowPathRow");
-            OnPropertyChanged("ShowWorkingDirRow");
-            OnPropertyChanged("ShowEmulatorRow");
-            OnPropertyChanged("ShowOverrideArgsRow");            
+            OnPropertyChanged(nameof(ShowArgumentsRow));
+            OnPropertyChanged(nameof(ShowAdditionalArgumentsRow));
+            OnPropertyChanged(nameof(ShowDefaultArgumentsRow));
+            OnPropertyChanged(nameof(ShowPathRow));
+            OnPropertyChanged(nameof(ShowWorkingDirRow));
+            OnPropertyChanged(nameof(ShowEmulatorRow));
+            OnPropertyChanged(nameof(ShowOverrideArgsRow));
         }
 
         private void CheckOverrideArgs_Checked(object sender, RoutedEventArgs e)
         {
+            if (GameTask == null)
+            {
+                return;
+            }
+
             NotifyRowChange();
 
             if (GameTask.OverrideDefaultArgs && !string.IsNullOrEmpty(SelectedEmulatorArguments))
@@ -241,6 +264,11 @@ namespace Playnite.DesktopApp.Controls
 
         private void ComboEmulator_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (GameTask == null)
+            {
+                return;
+            }
+
             if (Emulators == null || Emulators.Count == 0)
             {
                 return;
@@ -254,6 +282,11 @@ namespace Playnite.DesktopApp.Controls
 
         private void ComboEmulatorConfig_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (GameTask == null)
+            {
+                return;
+            }
+
             if (Emulators == null || Emulators.Count == 0)
             {
                 SelectedEmulatorArguments = string.Empty;

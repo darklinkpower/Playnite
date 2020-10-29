@@ -22,12 +22,11 @@ namespace Playnite.Tests.Plugins
             var api = new Mock<IPlayniteAPI>();
             var factory = new ExtensionFactory(new GameDatabase(), new GameControllerFactory());
 
-            var descriptors = factory.GetExtensionDescriptors();
+            var descriptors = ExtensionFactory.GetExtensionDescriptors();
             Assert.AreEqual(2, descriptors.Count);
 
-            factory.LoadPlugins(api.Object, null);
+            factory.LoadPlugins(api.Object, null, false);
             Assert.AreEqual(2, factory.Plugins.Count);
-            Assert.AreEqual(1, factory.ExportedFunctions.Count);
         }
     }
 }

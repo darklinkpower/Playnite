@@ -14,6 +14,8 @@ namespace PlayniteServices
 {
     public class Program
     {
+        private static readonly ILogger logger = LogManager.GetLogger();
+
         public static Database Database
         {
             get; private set;
@@ -27,11 +29,11 @@ namespace PlayniteServices
                 {
                     config.AddJsonFile("customSettings.json", optional: true, reloadOnChange: true);
                     config.AddJsonFile("patreonTokens.json", optional: true, reloadOnChange: true);
+                    config.AddJsonFile("twitchTokens.json", optional: true, reloadOnChange: true);
                 })
                 .Build();
 
             Database = new Database(Database.Path);
-            Database.GetCollection(Controllers.IGDB.GamesBySteamIdController.DbCollectionName).EnsureIndex(nameof(Models.IGDB.SteamIdGame.steamId));
             return host;
         }
 
@@ -39,7 +41,8 @@ namespace PlayniteServices
         {
             NLogLogger.ConfigureLogger();
             LogManager.Init(new NLogLogProvider());
+            logger.Info("Server starting...");
             BuildWebHost(args).Run();
-        }        
+        }
     }
 }

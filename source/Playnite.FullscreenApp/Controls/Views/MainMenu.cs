@@ -24,7 +24,10 @@ namespace Playnite.FullscreenApp.Controls.Views
     [TemplatePart(Name = "PART_ButtonPatreon", Type = typeof(ButtonBase))]
     [TemplatePart(Name = "PART_ButtonRestartSystem", Type = typeof(ButtonBase))]
     [TemplatePart(Name = "PART_ButtonShutdownSystem", Type = typeof(ButtonBase))]
+    [TemplatePart(Name = "PART_ButtonSleepSystem", Type = typeof(ButtonBase))]
     [TemplatePart(Name = "PART_ButtonHibernateSystem", Type = typeof(ButtonBase))]
+    [TemplatePart(Name = "PART_ButtonPickRandomGame", Type = typeof(ButtonBase))]
+    [TemplatePart(Name = "PART_ButtonUpdateLibrary", Type = typeof(ButtonBase))]
     public class MainMenu : Control
     {
         private FullscreenAppViewModel mainModel;
@@ -36,7 +39,10 @@ namespace Playnite.FullscreenApp.Controls.Views
         private ButtonBase ButtoFeedback;
         private ButtonBase ButtonRestartSystem;
         private ButtonBase ButtonShutdownSystem;
+        private ButtonBase ButtonSleepSystem;
         private ButtonBase ButtonHibernateSystem;
+        private ButtonBase ButtonPickRandomGame;
+        private ButtonBase ButtonUpdateLibrary;
 
         static MainMenu()
         {
@@ -98,6 +104,12 @@ namespace Playnite.FullscreenApp.Controls.Views
                     ButtonSwitchToDesktop.Command = mainModel.SwitchToDesktopCommand;
                 }
 
+                ButtonPickRandomGame = Template.FindName("PART_ButtonPickRandomGame", this) as ButtonBase;
+                if (ButtonPickRandomGame != null)
+                {
+                    ButtonPickRandomGame.Command = mainModel.SelectRandomGameCommand;
+                }
+
                 ButtonPatreon = Template.FindName("PART_ButtonPatreon", this) as ButtonBase;
                 if (ButtonPatreon != null)
                 {
@@ -131,10 +143,22 @@ namespace Playnite.FullscreenApp.Controls.Views
                     ButtonShutdownSystem.Command = mainModel.ShutdownSystemCommand;
                 }
 
+                ButtonSleepSystem = Template.FindName("PART_ButtonSleepSystem", this) as ButtonBase;
+                if (ButtonSleepSystem != null)
+                {
+                    ButtonSleepSystem.Command = mainModel.SleepSystemCommand;
+                }
+
                 ButtonHibernateSystem = Template.FindName("PART_ButtonHibernateSystem", this) as ButtonBase;
                 if (ButtonHibernateSystem != null)
                 {
                     ButtonHibernateSystem.Command = mainModel.HibernateSystemCommand;
+                }
+
+                ButtonUpdateLibrary = Template.FindName("PART_ButtonUpdateLibrary", this) as ButtonBase;
+                if (ButtonUpdateLibrary != null)
+                {
+                    ButtonUpdateLibrary.Command = mainModel.UpdateGamesCommand;
                 }
             }
         }

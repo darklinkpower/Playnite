@@ -42,15 +42,10 @@ namespace Playnite.FullscreenApp
         {
             ProgressWindowFactory.SetWindowType<ProgressWindow>();
             CrashHandlerWindowFactory.SetWindowType<CrashWindow>();
+            ExtensionCrashHandlerWindowFactory.SetWindowType<ExtensionCrashWindow>();
             UpdateWindowFactory.SetWindowType<UpdateWindow>();
             Dialogs = new FullscreenDialogs();
             Playnite.Dialogs.SetHandler(Dialogs);
-
-            if (CheckOtherInstances())
-            {
-                return;
-            }
-
             if (!AppSettings.FirstTimeWizardComplete)
             {
                 Dialogs.ShowErrorMessage(ResourceProvider.GetString("LOCFullscreenFirstTimeError"), "");
@@ -76,15 +71,6 @@ namespace Playnite.FullscreenApp
         {
             Database = new GameDatabase();
             Controllers = new GameControllerFactory(Database);
-            Api = new PlayniteAPI(
-                new DatabaseAPI(Database),
-                Dialogs,
-                null,
-                new PlayniteInfoAPI(),
-                new PlaynitePathsAPI(),
-                new WebViewFactory(),
-                new ResourceProvider(),
-                new NotificationsAPI());
             Extensions = new ExtensionFactory(Database, Controllers);
             GamesEditor = new GamesEditor(
                 Database,
@@ -93,6 +79,18 @@ namespace Playnite.FullscreenApp
                 Dialogs,
                 Extensions,
                 this);
+            Api = new PlayniteAPI(
+                new DatabaseAPI(Database),
+                Dialogs,
+                null,
+                new PlayniteInfoAPI(),
+                new PlaynitePathsAPI(),
+                new WebViewFactory(),
+                new ResourceProvider(),
+                new NotificationsAPI(),
+                GamesEditor,
+                new PlayniteUriHandler(),
+                new PlayniteSettingsAPI(AppSettings));
             Game.DatabaseReference = Database;
             ImageSourceManager.SetDatabase(Database);
             MainModel = new FullscreenAppViewModel(
@@ -110,8 +108,8 @@ namespace Playnite.FullscreenApp
 
         private async void OpenMainViewAsync()
         {
-            Extensions.LoadPlugins(Api, AppSettings.DisabledPlugins);
-            Extensions.LoadScripts(Api, AppSettings.DisabledPlugins);
+            Extensions.LoadPlugins(Api, AppSettings.DisabledPlugins, CmdLine.SafeStartup);
+            Extensions.LoadScripts(Api, AppSettings.DisabledPlugins, CmdLine.SafeStartup);
             splashScreen?.Close(new TimeSpan(0));
             MainModel.OpenView();
             CurrentNative.MainWindow = MainModel.Window.Window;
@@ -154,6 +152,18 @@ namespace Playnite.FullscreenApp
         public override void ShowWindowsNotification(string title, string body, Action action)
         {
             // Fullscreen mode shoulnd't show anything since user has no way how inteact with it
+        }
+
+        public override void SwitchAppMode(ApplicationMode mode)
+        {
+            if (mode == ApplicationMode.Desktop)
+            {
+                MainModel.SwitchToDesktopMode();
+            }
+            else
+            {
+                Restore();
+            }
         }
     }
 }

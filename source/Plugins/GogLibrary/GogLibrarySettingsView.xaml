@@ -9,7 +9,7 @@
              xmlns:pcmd="clr-namespace:Playnite.Commands"
              mc:Ignorable="d" 
              d:DesignHeight="300" d:DesignWidth="600">
-    
+
     <d:DesignerProperties.DesignStyle>
         <Style TargetType="UserControl">
             <Setter Property="Background" Value="White" />
@@ -22,29 +22,27 @@
         <sys:Boolean x:Key="False">False</sys:Boolean>
     </UserControl.Resources>
 
-    <StackPanel>
+    <StackPanel Margin="20">
         <CheckBox DockPanel.Dock="Top" Name="CheckGOGImportInstalled"
                   Margin="0,0,0,15"
                   IsChecked="{Binding ImportInstalledGames}"
                   Content="{DynamicResource LOCSettingsImportInstalledLabel}"/>
 
-        <CheckBox DockPanel.Dock="Top" Name="CheckGOGImportUninstalled"
-                  IsChecked="{Binding ImportUninstalledGames}"
-                  Content="{DynamicResource LOCSettingsImportUninstalledLabel}"/>        
-        
-        <StackPanel DockPanel.Dock="Top" Margin="40,5,5,5"
-                   IsEnabled="{Binding IsChecked, ElementName=CheckGOGImportUninstalled}">
+        <CheckBox DockPanel.Dock="Top" Name="CheckGOGConnectAccount"
+                  IsChecked="{Binding ConnectAccount}"
+                  Content="{DynamicResource LOCSettingsConnectAccount}"/>
 
-            <TextBlock Text="{DynamicResource LOCGOGAccountSyncDescription}"
-                       Margin="0,10,0,10" TextWrapping="Wrap" />
+        <StackPanel DockPanel.Dock="Top" Margin="40,5,5,0"
+                   IsEnabled="{Binding IsChecked, ElementName=CheckGOGConnectAccount}">
 
-            <RadioButton Content="{DynamicResource LOCGOGUseLogin}" Margin="5" Name="RadioGogPrivateAcc"
-                         IsChecked="{Binding UsePublicAccount, Converter={StaticResource NegateConverter}}"/>
+            <CheckBox DockPanel.Dock="Top" Name="CheckGOGImportUninstalled"
+                      IsChecked="{Binding ImportUninstalledGames}"
+                      Margin="0,10,0,0"
+                      Content="{DynamicResource LOCSettingsImportUninstalledLabel}"/>
 
-            <StackPanel Orientation="Horizontal">
-                <Button Content="{DynamicResource LOCAuthenticateLabel}" HorizontalAlignment="Left" 
-                        IsEnabled="{Binding IsChecked, ElementName=RadioGogPrivateAcc}"
-                        Command="{Binding LoginCommand}" Margin="30,5,5,5"/> 
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,10">
+                <Button Content="{DynamicResource LOCAuthenticateLabel}" HorizontalAlignment="Left"                         
+                        Command="{Binding LoginCommand}" Margin="0,5,5,5"/>
                 <TextBlock VerticalAlignment="Center" Margin="10,5,5,5">
                     <TextBlock.Tag>
                         <PriorityBinding>
@@ -53,7 +51,7 @@
                         </PriorityBinding>
                     </TextBlock.Tag>
                     <TextBlock.Style>
-                        <Style TargetType="TextBlock">
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource BaseTextBlockStyle}">
                             <Style.Triggers>
                                 <Trigger Property="Tag" Value="{StaticResource True}">
                                     <Setter Property="Text" Value="{DynamicResource LOCLoggedIn}" />
@@ -69,24 +67,18 @@
                     </TextBlock.Style>
                 </TextBlock>
             </StackPanel>
-
-            <RadioButton Content="{DynamicResource LOCGOGUseAccountName}" Margin="5" Name="RadioGogPublicAcc"
-                         IsChecked="{Binding UsePublicAccount}"/>
-            <StackPanel Orientation="Horizontal" IsEnabled="{Binding IsChecked, ElementName=RadioGogPublicAcc}">
-                <TextBox HorizontalAlignment="Left" Width="200"
-                         Text="{Binding AccountName}" Margin="30,5,5,5"/>
-            </StackPanel>
-
-            <TextBlock VerticalAlignment="Center" Margin="10">
-                        <Hyperlink NavigateUri="https://github.com/JosefNemec/Playnite/wiki/How-to-get-GOG-account-name"
-                                   Command="{x:Static pcmd:GlobalCommands.NavigateUrlCommand}"
-                                   CommandParameter="{Binding NavigateUri, RelativeSource={RelativeSource Self}}">
-                            <Run Text="{DynamicResource LOCTroubleShootingAccountLink}" />
-                        </Hyperlink>
-            </TextBlock>
         </StackPanel>
 
-        <CheckBox IsChecked="{Binding StartGamesUsingGalaxy}" Margin="0,10,0,0" DockPanel.Dock="Top"
+        <CheckBox IsChecked="{Binding StartGamesUsingGalaxy}" DockPanel.Dock="Top"
+                  Visibility="{Binding IsFirstRunUse, Converter={pcon:InvertedBooleanToVisibilityConverter}}"
                   Content="{DynamicResource LOCSettingsGOGUseGalaxy}"/>
+
+        <TextBlock VerticalAlignment="Center" Margin="0,20,0,0">
+            <Hyperlink NavigateUri="https://github.com/JosefNemec/Playnite/wiki/GOG-troubleshooting"
+                        Command="{x:Static pcmd:GlobalCommands.NavigateUrlCommand}"
+                        CommandParameter="{Binding NavigateUri, RelativeSource={RelativeSource Self}}">
+                <Run Text="{DynamicResource LOCTroubleShootingIssues}" />
+            </Hyperlink>
+        </TextBlock>
     </StackPanel>
 </UserControl>

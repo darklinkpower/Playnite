@@ -13,6 +13,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Playnite.Windows;
+using System.Windows;
+using Playnite.Common.Media.Icons;
 
 namespace Playnite.DesktopApp.ViewModels
 {
@@ -55,6 +57,14 @@ namespace Playnite.DesktopApp.ViewModels
             }, (a) => a?.Count == 1);
         }
 
+        public RelayCommand<object> RemoveUnusedGenresCommand
+        {
+            get => new RelayCommand<object>((a) =>
+            {
+                RemoveUnusedItems(EditingGenres, g => g.GenreIds);
+            }, (a) => EditingGenres.Count > 0);
+        }
+
         #endregion Genres
 
         #region Companies
@@ -86,6 +96,28 @@ namespace Playnite.DesktopApp.ViewModels
             {
                 RenameItem(EditingCompanies, a.First() as Company);
             }, (a) => a?.Count == 1);
+        }
+
+        public RelayCommand<object> RemoveUnusedCompaniesCommand
+        {
+            get => new RelayCommand<object>((a) =>
+            {
+                RemoveUnusedItems(EditingCompanies, g =>
+                {
+                    var ids = new List<Guid>();
+                    if (g.DeveloperIds.HasItems())
+                    {
+                        g.DeveloperIds.ForEach(d => ids.AddMissing(d));
+                    }
+
+                    if (g.PublisherIds.HasItems())
+                    {
+                        g.PublisherIds.ForEach(d => ids.AddMissing(d));
+                    }
+
+                    return ids;
+                });
+            }, (a) => EditingCompanies.Count > 0);
         }
 
         #endregion Companies
@@ -121,7 +153,56 @@ namespace Playnite.DesktopApp.ViewModels
             }, (a) => a?.Count == 1);
         }
 
+        public RelayCommand<object> RemoveUnusedTagsCommand
+        {
+            get => new RelayCommand<object>((a) =>
+            {
+                RemoveUnusedItems(EditingTags, g => g.TagIds);
+            }, (a) => EditingTags.Count > 0);
+        }
+
         #endregion Tags
+
+        #region Features
+
+        public ObservableCollection<GameFeature> EditingFeatures
+        {
+            get;
+        }
+
+        public RelayCommand<object> AddFeatureCommand
+        {
+            get => new RelayCommand<object>((a) =>
+            {
+                AddItem(EditingFeatures);
+            });
+        }
+
+        public RelayCommand<IList<object>> RemoveFeatureCommand
+        {
+            get => new RelayCommand<IList<object>>((a) =>
+            {
+                RemoveItem(EditingFeatures, a.Cast<GameFeature>().ToList());
+            }, (a) => a?.Count > 0);
+        }
+
+        public RelayCommand<IList<object>> RenameFeatureCommand
+        {
+            get => new RelayCommand<IList<object>>((a) =>
+            {
+                RenameItem(EditingFeatures, a.First() as GameFeature);
+            }, (a) => a?.Count == 1);
+        }
+
+        public RelayCommand<object> RemoveUnusedFeaturesCommand
+        {
+            get => new RelayCommand<object>((a) =>
+            {
+                RemoveUnusedItems(EditingFeatures, g => g.FeatureIds);
+            }, (a) => EditingFeatures.Count > 0);
+        }
+
+        #endregion Features
 
         #region Platforms
 
@@ -170,6 +251,14 @@ namespace Playnite.DesktopApp.ViewModels
             }, (a) => a?.Count == 1);
         }
 
+        public RelayCommand<IList<object>> SelectPlatformBackgroundCommand
+        {
+            get => new RelayCommand<IList<object>>((a) =>
+            {
+                SelectPlatformBackground(a.First() as Platform);
+            }, (a) => a?.Count == 1);
+        }
+
         public RelayCommand<IList<object>> RemovePlatformIconCommand
         {
             get => new RelayCommand<IList<object>>((a) =>
@@ -184,6 +273,22 @@ namespace Playnite.DesktopApp.ViewModels
             {
                 RemovePlatformCover(a.First() as Platform);
             }, (a) => a?.Count == 1);
+        }
+
+        public RelayCommand<IList<object>> RemovePlatformBackgroundCommand
+        {
+            get => new RelayCommand<IList<object>>((a) =>
+            {
+                RemovePlatformBackground(a.First() as Platform);
+            }, (a) => a?.Count == 1);
+        }
+
+        public RelayCommand<object> RemoveUnusedPlatformsCommand
+        {
+            get => new RelayCommand<object>((a) =>
+            {
+                RemoveUnusedPlatforms();
+            }, (a) => EditingPlatforms.Count > 0);
         }
 
         #endregion Platforms
@@ -219,6 +324,14 @@ namespace Playnite.DesktopApp.ViewModels
             }, (a) => a?.Count == 1);
         }
 
+        public RelayCommand<object> RemoveUnusedSeriesCommand
+        {
+            get => new RelayCommand<object>((a) =>
+            {
+                RemoveUnusedItems(EditingSeries, g => g.SeriesId);
+            }, (a) => EditingSeries.Count > 0);
+        }
+
         #endregion Series
 
         #region AgeRatings
@@ -250,6 +363,14 @@ namespace Playnite.DesktopApp.ViewModels
             {
                 RenameItem(EditingAgeRatings, a.First() as AgeRating);
             }, (a) => a?.Count == 1);
+        }
+
+        public RelayCommand<object> RemoveUnusedAgeRatingsCommand
+        {
+            get => new RelayCommand<object>((a) =>
+            {
+                RemoveUnusedItems(EditingAgeRatings, g => g.AgeRatingId);
+            }, (a) => EditingAgeRatings.Count > 0);
         }
 
         #endregion AgeRatings
@@ -285,6 +406,14 @@ namespace Playnite.DesktopApp.ViewModels
             }, (a) => a?.Count == 1);
         }
 
+        public RelayCommand<object> RemoveUnusedRegionsCommand
+        {
+            get => new RelayCommand<object>((a) =>
+            {
+                RemoveUnusedItems(EditingRegions, g => g.RegionId);
+            }, (a) => EditingRegions.Count > 0);
+        }
+
         #endregion Regions
 
         #region Sources
@@ -316,6 +445,14 @@ namespace Playnite.DesktopApp.ViewModels
             {
                 RenameItem(EditingSources, a.First() as GameSource);
             }, (a) => a?.Count == 1);
+        }
+
+        public RelayCommand<object> RemoveUnusedSourcesCommand
+        {
+            get => new RelayCommand<object>((a) =>
+            {
+                RemoveUnusedItems(EditingSources, g => g.SourceId);
+            }, (a) => EditingSources.Count > 0);
         }
 
         #endregion Sources
@@ -351,8 +488,15 @@ namespace Playnite.DesktopApp.ViewModels
             }, (a) => a?.Count == 1);
         }
 
-        #endregion Categories
+        public RelayCommand<object> RemoveUnusedCategoriesCommand
+        {
+            get => new RelayCommand<object>((a) =>
+            {
+                RemoveUnusedItems(EditingCategories, g => g.CategoryIds);
+            }, (a) => EditingCategories.Count > 0);
+        }
 
+        #endregion Categories
 
         public RelayCommand<object> SaveCommand
         {
@@ -385,6 +529,7 @@ namespace Playnite.DesktopApp.ViewModels
             EditingSeries = database.Series.GetClone().OrderBy(a => a.Name).ToObservable();
             EditingSources = database.Sources.GetClone().OrderBy(a => a.Name).ToObservable();
             EditingTags = database.Tags.GetClone().OrderBy(a => a.Name).ToObservable();
+            EditingFeatures = database.Features.GetClone().OrderBy(a => a.Name).ToObservable();
         }
 
         public void OpenView()
@@ -409,6 +554,7 @@ namespace Playnite.DesktopApp.ViewModels
                 UpdateDbCollection(database.Series, EditingSeries);
                 UpdateDbCollection(database.Sources, EditingSources);
                 UpdateDbCollection(database.Tags, EditingTags);
+                UpdateDbCollection(database.Features, EditingFeatures);
                 UpdatePlatformsCollection();
             }
 
@@ -416,7 +562,7 @@ namespace Playnite.DesktopApp.ViewModels
         }
 
         private void UpdateDbCollection<TItem>(IItemCollection<TItem> dbCollection, IList<TItem> updatedCollection) where TItem : DatabaseObject
-        {            
+        {
             // Remove deleted items
             var removedItems = dbCollection.Where(a => updatedCollection.FirstOrDefault(b => b.Id == a.Id) == null);
             if (removedItems.Any())
@@ -473,7 +619,12 @@ namespace Playnite.DesktopApp.ViewModels
                 {
                     platform.Cover = addNewFile(platform.Cover, dbPlatform.Id);
                 }
-                
+
+                if (!string.IsNullOrEmpty(platform.Background) && File.Exists(platform.Background))
+                {
+                    platform.Background = addNewFile(platform.Background, dbPlatform.Id);
+                }
+
                 database.Platforms.Update(platform);
             }
 
@@ -494,7 +645,131 @@ namespace Playnite.DesktopApp.ViewModels
                     addedPlatform.Cover = addNewFile(addedPlatform.Cover, addedPlatform.Id);
                 }
 
+                if (!string.IsNullOrEmpty(addedPlatform.Background))
+                {
+                    addedPlatform.Background = addNewFile(addedPlatform.Background, addedPlatform.Id);
+                }
+
                 database.Platforms.Add(addedPlatform);
+            }
+        }
+
+        public void RemoveUnusedItems<TItem>(IList<TItem> sourceCollection, Func<Game, Guid> fieldSelector) where TItem : DatabaseObject
+        {
+            if (sourceCollection.Count == 0)
+            {
+                return;
+            }
+
+            var unused = new List<Guid>(sourceCollection.Select(a => a.Id));
+            foreach (var game in database.Games)
+            {
+                var usedId = fieldSelector(game);
+                if (unused.Contains(usedId))
+                {
+                    unused.Remove(usedId);
+                }
+            }
+
+            if (unused.Count > 0)
+            {
+                if (dialogs.ShowMessage(
+                    string.Format(resources.GetString("LOCRemoveUnusedFieldsAskMessage"), unused.Count),
+                    "", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    foreach (var item in unused)
+                    {
+                        var srcItem = sourceCollection.First(a => a.Id == item);
+                        sourceCollection.Remove(srcItem);
+                    }
+                }
+            }
+            else
+            {
+                dialogs.ShowMessage(resources.GetString("LOCRemoveUnusedFieldsNoUnusedMessage"));
+            }
+        }
+
+        public void RemoveUnusedItems<TItem>(IList<TItem> sourceCollection, Func<Game, List<Guid>> fieldSelector) where TItem : DatabaseObject
+        {
+            if (sourceCollection.Count == 0)
+            {
+                return;
+            }
+
+            var unused = new List<Guid>(sourceCollection.Select(a => a.Id));
+            foreach (var game in database.Games)
+            {
+                var usedIds = fieldSelector(game) ?? new List<Guid>();
+                foreach (var item in unused.Intersect(usedIds).ToList())
+                {
+                    unused.Remove(item);
+                }
+            }
+
+            if (unused.Count > 0)
+            {
+                if (dialogs.ShowMessage(
+                    string.Format(resources.GetString("LOCRemoveUnusedFieldsAskMessage"), unused.Count),
+                    "", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    foreach (var item in unused)
+                    {
+                        var srcItem = sourceCollection.First(a => a.Id == item);
+                        sourceCollection.Remove(srcItem);
+                    }
+                }
+            }
+            else
+            {
+                dialogs.ShowMessage(resources.GetString("LOCRemoveUnusedFieldsNoUnusedMessage"));
+            }
+        }
+
+        public void RemoveUnusedPlatforms()
+        {
+            if (EditingPlatforms.Count == 0)
+            {
+                return;
+            }
+
+            var unused = new List<Guid>(EditingPlatforms.Select(a => a.Id));
+            foreach (var game in database.Games)
+            {
+                if (unused.Contains(game.PlatformId))
+                {
+                    unused.Remove(game.PlatformId);
+                }
+            }
+
+            foreach (var emulator in database.Emulators)
+            {
+                foreach (var profile in emulator.Profiles)
+                {
+                    var usedIds = profile.Platforms ?? new List<Guid>();
+                    foreach (var item in unused.Intersect(usedIds).ToList())
+                    {
+                        unused.Remove(item);
+                    }
+                }
+            }
+
+            if (unused.Count > 0)
+            {
+                if (dialogs.ShowMessage(
+                    string.Format(resources.GetString("LOCRemoveUnusedFieldsAskMessage"), unused.Count),
+                    "", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                {
+                    foreach (var item in unused)
+                    {
+                        var srcItem = EditingPlatforms.First(a => a.Id == item);
+                        EditingPlatforms.Remove(srcItem);
+                    }
+                }
+            }
+            else
+            {
+                dialogs.ShowMessage(resources.GetString("LOCRemoveUnusedFieldsNoUnusedMessage"));
             }
         }
 
@@ -525,7 +800,7 @@ namespace Playnite.DesktopApp.ViewModels
                 item.Name);
             if (res.Result && !res.SelectedString.IsNullOrEmpty())
             {
-                if (collection.Any(a => a.Name.Equals(res.SelectedString, StringComparison.InvariantCultureIgnoreCase)))
+                if (collection.Any(a => a.Name.Equals(res.SelectedString, StringComparison.InvariantCultureIgnoreCase) && a.Id != item.Id))
                 {
                     dialogs.ShowErrorMessage(resources.GetString("LOCItemAlreadyExists"), "");
                 }
@@ -546,26 +821,26 @@ namespace Playnite.DesktopApp.ViewModels
 
         public void SelectPlatformIcon(Platform platform)
         {
-            var path = dialogs.SelectIconFile();
-            if (string.IsNullOrEmpty(path))
+            var iconPath = dialogs.SelectIconFile();
+            if (string.IsNullOrEmpty(iconPath))
             {
                 return;
             }
 
-            if (path.EndsWith("exe", StringComparison.OrdinalIgnoreCase))
+            if (iconPath.EndsWith("exe", StringComparison.OrdinalIgnoreCase))
             {
-                var ico = System.Drawing.IconExtension.ExtractIconFromExe(path, true);
-                if (ico == null)
+                var convertedPath = Path.Combine(PlaynitePaths.TempPath, Guid.NewGuid() + ".ico");
+                if (IconExtractor.ExtractMainIconFromFile(iconPath, convertedPath))
                 {
-                    return;
+                    iconPath = convertedPath;
                 }
-
-                path = Path.Combine(PlaynitePaths.TempPath, Guid.NewGuid() + ".png");
-                FileSystem.PrepareSaveFile(path);
-                ico.ToBitmap().Save(path, System.Drawing.Imaging.ImageFormat.Png);
+                else
+                {
+                    iconPath = null;
+                }
             }
 
-            platform.Icon = path;
+            platform.Icon = iconPath;
         }
 
         public void SelectPlatformCover(Platform platform)
@@ -577,6 +852,15 @@ namespace Playnite.DesktopApp.ViewModels
             }
         }
 
+        public void SelectPlatformBackground(Platform platform)
+        {
+            var path = dialogs.SelectIconFile();
+            if (!string.IsNullOrEmpty(path))
+            {
+                platform.Background = path;
+            }
+        }
+
         public void RemovePlatformIcon(Platform platform)
         {
             platform.Icon = null;
@@ -585,6 +869,11 @@ namespace Playnite.DesktopApp.ViewModels
         public void RemovePlatformCover(Platform platform)
         {
             platform.Cover = null;
+        }
+
+        public void RemovePlatformBackground(Platform platform)
+        {
+            platform.Background = null;
         }
     }
 }

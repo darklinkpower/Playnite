@@ -8,5 +8,10 @@ namespace Playnite.Scripting
 {
     public interface IScriptRuntime : IDisposable
     {
+        object Execute(string script, string workDir = null);
+
+        object ExecuteFile(string scriptPath, string workDir = null);
+
+        object Execute(string script, Dictionary<string, object> variables, string workDir = null);
     }
 }

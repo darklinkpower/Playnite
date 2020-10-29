@@ -30,7 +30,8 @@ namespace GogLibrary.Services
         public void Login()
         {
             var loginUrl = Gog.GetLoginUrl();
-            webView.NavigationChanged += (s, e) =>
+            loginUrl = Regex.Replace(loginUrl, $"&gog_lc=.+$", "&gog_lc=" + Gog.EnStoreLocaleString);
+            webView.LoadingChanged += (s, e) =>
             {
                 if (webView.GetCurrentAddress().Contains("/on_login_success"))
                 {
@@ -38,7 +39,6 @@ namespace GogLibrary.Services
                 }
             };
 
-            ForceWebLanguage(Gog.EnStoreLocaleString);
             webView.Navigate(loginUrl);
             webView.OpenDialog();
         }
@@ -121,11 +121,11 @@ namespace GogLibrary.Services
             {
                 logger.Error(e, $"Failed to library from new API for account {account.username}, falling back to legacy.");
                 logger.Debug(stringLibContent);
-                return GetOwnedGamesLegacy();
+                return GetOwnedGames();
             }
         }
 
-        public List<LibraryGameResponse> GetOwnedGamesLegacy()
+        public List<LibraryGameResponse> GetOwnedGames()
         {
             var games = new List<LibraryGameResponse>();
             var baseUrl = @"https://www.gog.com/account/getFilteredProducts?hiddenFlag=0&mediaType=1&page={0}&sortBy=title";
@@ -156,7 +156,7 @@ namespace GogLibrary.Services
                 {
                     webView.NavigateAndWait(string.Format(baseUrl, i));
                     gamesList = webView.GetPageText();
-                    var pageData = libraryData = JsonConvert.DeserializeObject<GetOwnedGamesResult>(gamesList);                    
+                    var pageData = libraryData = JsonConvert.DeserializeObject<GetOwnedGamesResult>(gamesList);
                     games.AddRange(pageData.products.Select(a => new LibraryGameResponse()
                     {
                         game = new LibraryGameResponse.Game()

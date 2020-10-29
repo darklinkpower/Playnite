@@ -20,6 +20,12 @@ namespace Playnite.Common
                 FileMode.Open,
                 Interop.FILE_FLAG_BACKUP_SEMANTICS,
                 IntPtr.Zero);
+
+            if (path.StartsWith(@"\\"))
+            {
+                return path;
+            }
+
             if (h == Interop.INVALID_HANDLE_VALUE)
             {
                 throw new Win32Exception();
@@ -34,7 +40,15 @@ namespace Playnite.Common
                     throw new Win32Exception();
                 }
 
-                return sb.ToString().Replace(@"\\?\", string.Empty);
+                var targetPath = sb.ToString();
+                if (targetPath.StartsWith(@"\\?\UNC\"))
+                {
+                    return targetPath.Replace(@"\\?\UNC\", @"\\");
+                }
+                else
+                {
+                    return targetPath.Replace(@"\\?\", string.Empty);
+                }
             }
             finally
             {
@@ -92,7 +106,7 @@ namespace Playnite.Common
             }
             catch
             {
-                // this shound't happen 
+                // this shound't happen
             }
 
             return Path.GetFullPath(formatted).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).ToUpperInvariant();
@@ -126,9 +140,10 @@ namespace Playnite.Common
             }
         }
 
-        public static string GetSafeFilename(string filename)
+        public static string GetSafePathName(string filename)
         {
-            return string.Join(" ", filename.Split(Path.GetInvalidFileNameChars()));
+            var path = string.Join(" ", filename.Split(Path.GetInvalidFileNameChars()));
+            return Regex.Replace(path, @"\s+", " ").Trim();
         }
 
         public static bool IsFullPath(string path)

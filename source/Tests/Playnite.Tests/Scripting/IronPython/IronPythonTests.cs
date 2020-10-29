@@ -7,10 +7,12 @@ using System.Management.Automation;
 using System.Text;
 using System.Threading.Tasks;
 using IronPython.Runtime.Exceptions;
+using Playnite.Common;
+using System.IO;
+using Playnite.SDK.Exceptions;
 
 namespace Playnite.Tests.Scripting.IronPython
 {
-
     [TestFixture]
     public class IronPythonTests
     {
@@ -78,7 +80,31 @@ def test_func():
         {
             using (var py = new IronPythonRuntime())
             {
-                Assert.Throws<DivideByZeroException>(() => py.Execute("1 / 0"));
+                Assert.Throws<ScriptRuntimeException>(() => py.Execute("1 / 0"));
+            }
+        }
+
+        [Test]
+        public void ExecuteWorkDirTest()
+        {
+            using (var tempDir = TempDirectory.Create())
+            using (var runtime = new IronPythonRuntime())
+            {
+                var outPath = "workDirTest.txt";
+                FileSystem.DeleteFile(outPath);
+                FileAssert.DoesNotExist(outPath);
+                runtime.Execute(@"f = open('workDirTest.txt', 'w')
+f.write('test')
+f.close()");
+                FileAssert.Exists(outPath);
+
+                outPath = Path.Combine(tempDir.TempPath, outPath);
+                FileSystem.DeleteFile(outPath);
+                FileAssert.DoesNotExist(outPath);
+                runtime.Execute(@"f = open('workDirTest.txt', 'w')
+f.write('test')
+f.close()", tempDir.TempPath);
+                FileAssert.Exists(outPath);
             }
         }
     }

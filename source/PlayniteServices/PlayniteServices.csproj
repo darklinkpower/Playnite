@@ -11,13 +11,15 @@
 
   <ItemGroup>
     <Compile Include="..\Playnite.Common\Extensions\CloneObject.cs" Link="Common\CloneObject.cs" />
+    <Compile Include="..\Playnite.Common\Extensions\LongExtensions.cs" Link="Common\LongExtensions.cs" />
     <Compile Include="..\Playnite.Common\Extensions\ObjectExtensions.cs" Link="Common\ObjectExtensions.cs" />
+    <Compile Include="..\Playnite.Common\Extensions\StringExtensions.cs" Link="Common\StringExtensions.cs" />
     <Compile Include="..\Playnite.Common\InteropMethods.cs" Link="Common\InteropMethods.cs" />
+    <Compile Include="..\Playnite.Common\Roman.cs" Link="Common\Roman.cs" />
     <Compile Include="..\Playnite.Common\Serialization.cs" Link="Common\Serialization.cs" />
     <Compile Include="..\Playnite.Common\FileSystem.cs" Link="Common\FileSystem.cs" />
     <Compile Include="..\Playnite.Common\Paths.cs" Link="Common\Paths.cs" />
-    <Compile Include="..\PlayniteSDK\ILogger.cs" Link="SDK\ILogger.cs" />
-    <Compile Include="..\PlayniteSDK\LogManager.cs" Link="SDK\LogManager.cs" />
+    <Compile Include="..\Playnite\DiagnosticPackageInfo.cs" Link="Common\DiagnosticPackageInfo.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,17 +29,21 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="JsonApiSerializer" Version="1.0.0" />
+    <PackageReference Include="JsonApiSerializer" Version="1.7.4" />
     <PackageReference Include="LiteDB" Version="4.1.4" />
     <PackageReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Nett" Version="0.12.0" />
     <PackageReference Include="NLog" Version="4.5.11" />
+    <PackageReference Include="RateLimiter" Version="2.1.0" />
     <PackageReference Include="YamlDotNet" Version="5.3.0" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Common\" />
-    <Folder Include="SDK\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PlayniteSDK\Playnite.SDK.csproj" />
   </ItemGroup>
 
 </Project>

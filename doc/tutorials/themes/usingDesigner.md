@@ -13,13 +13,13 @@ Creating new theme
 [Open command prompt](https://www.windows-commandline.com/how-to-open-command-prompt/) and [navigate](https://www.windows-commandline.com/command-prompt-change-directory/) to Playnite's installation folder. To create new theme you need to run `Toolbox.exe` utility with these arguments:
 
 ```
-Toolbox.exe new theme desktop|fullscreen <ThemeName>
+Toolbox.exe new desktoptheme|fullscreentheme <ThemeName>
 ```
 
 For example to create new desktop theme with "Super Clear Modern" name:
 
 ```
-Toolbox.exe new theme desktop "Super Clear Modern"
+Toolbox.exe new desktoptheme "Super Clear Modern"
 ```
 
 This will create new theme folder with all files needed for theme to be edited in Blend. If theme creation is successful then Explorer window will open with your new theme folder.
@@ -72,3 +72,6 @@ Packaging theme for distribution
 ---------------------
 
 See [Distribution and Updates](distributionAndUpdates.md) page for more details.
+
+> [!WARNING] 
+> Please pay special attention to section about updating themes to make sure your custom theme always works with the latest Playnite version.

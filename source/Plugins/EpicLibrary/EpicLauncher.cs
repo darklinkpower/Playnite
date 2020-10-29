@@ -13,8 +13,9 @@ namespace EpicLibrary
     public class EpicLauncher
     {
         public const string GameLaunchUrlMask = @"com.epicgames.launcher://apps/{0}?action=launch&silent=true";
+        public const string LibraryLaunchUrl = @"com.epicgames.launcher://store/library";
 
-        public const string AllUsersPath = @"c:\Users\All Users\Epic\";
+        public static string AllUsersPath => Path.Combine(Environment.ExpandEnvironmentVariables("%PROGRAMDATA%"), "Epic");
 
         public static string ClientExecPath
         {
@@ -39,7 +40,10 @@ namespace EpicLibrary
             get
             {
                 var progs = Programs.GetUnistallProgramsList().
-                    FirstOrDefault(a => a.DisplayName == "Epic Games Launcher" && File.Exists(GetExecutablePath(a.InstallLocation)));
+                    FirstOrDefault(a =>
+                        a.DisplayName == "Epic Games Launcher" &&
+                        !a.InstallLocation.IsNullOrEmpty() &&
+                        File.Exists(GetExecutablePath(a.InstallLocation)));
                 if (progs == null)
                 {
                     return string.Empty;
@@ -69,7 +73,17 @@ namespace EpicLibrary
 
         internal static string GetExecutablePath(string rootPath)
         {
-            return Path.Combine(rootPath, "Launcher", "Portal", "Binaries", Environment.Is64BitOperatingSystem ? "Win64" : "Win32", "EpicGamesLauncher.exe");
+            // Always prefer 32bit executable
+            // https://github.com/JosefNemec/Playnite/issues/1552
+            var p32 = Path.Combine(rootPath, "Launcher", "Portal", "Binaries", "Win32", "EpicGamesLauncher.exe");
+            if (File.Exists(p32))
+            {
+                return p32;
+            }
+            else
+            {
+                return Path.Combine(rootPath, "Launcher", "Portal", "Binaries", "Win64", "EpicGamesLauncher.exe");
+            }
         }
 
         public static List<LauncherInstalled.InstalledApp> GetInstalledAppList()
@@ -95,7 +109,12 @@ namespace EpicLibrary
 
             foreach (var manFile in Directory.GetFiles(installListPath, "*.item"))
             {
-                manifests.Add(Serialization.FromJson<InstalledManifiest>(FileSystem.ReadFileAsStringSafe(manFile)));
+                var manifest = Serialization.FromJson<InstalledManifiest>(FileSystem.ReadFileAsStringSafe(manFile));
+                if (manifest != null)
+                // Some weird issue causes manifest to be created empty by Epic client
+                {
+                    manifests.Add(manifest);
+                }
             }
 
             return manifests;

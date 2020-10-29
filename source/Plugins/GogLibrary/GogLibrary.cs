@@ -87,10 +87,11 @@ namespace GogLibrary
                     InstallDirectory = Paths.FixSeparators(program.InstallLocation),
                     GameId = gameId,
                     Source = "GOG",
-                    Name = program.DisplayName,
-                    IsInstalled = true
+                    Name = program.DisplayName.RemoveTrademarks(),
+                    IsInstalled = true,
+                    Platform = "PC"
                 };
-   
+
                 var tasks = GetGameTasks(game.GameId, game.InstallDirectory);
                 // Empty play task = DLC
                 if (tasks.Item1 == null)
@@ -108,11 +109,6 @@ namespace GogLibrary
 
         internal List<GameInfo> GetLibraryGames()
         {
-            if (LibrarySettings.UsePublicAccount)
-            {
-                return GetLibraryGames(LibrarySettings.AccountName);
-            }
-
             using (var view = PlayniteApi.WebViews.CreateOffscreenView())
             {
                 var api = new GogAccountClient(view);
@@ -121,8 +117,7 @@ namespace GogLibrary
                     throw new Exception("User is not logged in to GOG account.");
                 }
 
-                var accInfo = api.GetAccountInfo();                
-                var libGames = api.GetOwnedGames(accInfo);
+                var libGames = api.GetOwnedGames();
                 if (libGames == null)
                 {
                     throw new Exception("Failed to obtain libary data.");
@@ -153,11 +148,12 @@ namespace GogLibrary
                 {
                     Source = "GOG",
                     GameId = game.game.id,
-                    Name = game.game.title,
+                    Name = game.game.title.RemoveTrademarks(),
                     Links = new List<Link>()
                     {
                         new Link("Store", @"https://www.gog.com" + game.game.url)
-                    }
+                    },
+                    Platform = "PC"
                 };
 
                 if (game.stats?.Keys?.Any() == true)
@@ -181,8 +177,14 @@ namespace GogLibrary
 
         public override Guid Id => Guid.Parse("AEBE8B7C-6DC3-4A66-AF31-E7375C6B5E9E");
 
+        public override LibraryPluginCapabilities Capabilities { get; } = new LibraryPluginCapabilities
+        {
+            CanShutdownClient = true
+        };
+
         public override ISettings GetSettings(bool firstRunSettings)
         {
+            LibrarySettings.IsFirstRunUse = firstRunSettings;
             return LibrarySettings;
         }
 
@@ -212,19 +214,24 @@ namespace GogLibrary
                 }
                 catch (Exception e)
                 {
-                    logger.Error(e, "Failed to import installed Origin games.");
+                    logger.Error(e, "Failed to import installed GOG games.");
                     importError = e;
                 }
             }
 
-            if (LibrarySettings.ImportUninstalledGames)
+            if (LibrarySettings.ConnectAccount)
             {
                 try
                 {
-                    var uninstalled = LibrarySettings.UsePublicAccount ? GetLibraryGames(LibrarySettings.AccountName) : GetLibraryGames();
-                    logger.Debug($"Found {uninstalled.Count} library GOG games.");
+                    var libraryGames = GetLibraryGames();
+                    logger.Debug($"Found {libraryGames.Count} library GOG games.");
 
-                    foreach (var game in uninstalled)
+                    if (!LibrarySettings.ImportUninstalledGames)
+                    {
+                        libraryGames = libraryGames.Where(lg => installedGames.ContainsKey(lg.GameId)).ToList();
+                    }
+
+                    foreach (var game in libraryGames)
                     {
                         if (installedGames.TryGetValue(game.GameId, out var installed))
                         {
@@ -239,18 +246,19 @@ namespace GogLibrary
                 }
                 catch (Exception e)
                 {
-                    logger.Error(e, "Failed to import uninstalled GOG games.");
+                    logger.Error(e, "Failed to import linked account GOG games details.");
                     importError = e;
                 }
             }
 
             if (importError != null)
             {
-                PlayniteApi.Notifications.Add(
+                PlayniteApi.Notifications.Add(new NotificationMessage(
                     dbImportMessageId,
                     string.Format(PlayniteApi.Resources.GetString("LOCLibraryImportError"), Name) +
                     System.Environment.NewLine + importError.Message,
-                    NotificationType.Error);
+                    NotificationType.Error,
+                    () => OpenSettingsView()));
             }
             else
             {
@@ -262,10 +270,9 @@ namespace GogLibrary
 
         public override LibraryMetadataProvider GetMetadataDownloader()
         {
-            return new GogMetadataProvider();
+            return new GogMetadataProvider(this);
         }
 
         #endregion ILibraryPlugin
-
     }
 }

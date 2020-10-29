@@ -1,5 +1,6 @@
 ﻿using Playnite.Behaviors;
 using Playnite.Common;
+using Playnite.Converters;
 using Playnite.DesktopApp.ViewModels;
 using Playnite.ViewModels;
 using System;
@@ -12,10 +13,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using BooleanToVisibilityConverter = System.Windows.Controls.BooleanToVisibilityConverter;
 
 namespace Playnite.DesktopApp.Controls.Views
 {
-
     [TemplatePart(Name = "PART_ElemMainMenu", Type = typeof(FrameworkElement))]
     [TemplatePart(Name = "PART_ElemViewMenu", Type = typeof(FrameworkElement))]
     [TemplatePart(Name = "PART_TextMainSearch", Type = typeof(SearchBox))]
@@ -72,6 +73,12 @@ namespace Playnite.DesktopApp.Controls.Views
                     StaysOpen = false,
                     Placement = PlacementMode.Bottom
                 };
+
+                BindingTools.SetBinding(ElemMainMenu,
+                    FrameworkElement.VisibilityProperty,
+                    mainModel.AppSettings,
+                    nameof(PlayniteSettings.SidebarVisible),
+                    converter: new InvertedBooleanToVisibilityConverter());
             }
 
             ElemViewMenu = Template.FindName("PART_ElemViewMenu", this) as FrameworkElement;
@@ -94,6 +101,11 @@ namespace Playnite.DesktopApp.Controls.Views
                     nameof(FilterSettings.Name),
                     BindingMode.TwoWay,
                     delay: 100);
+                BindingTools.SetBinding(TextMainSearch,
+                    SearchBox.IsFocusedProperty,
+                    mainModel,
+                    nameof(mainModel.SearchOpened),
+                    BindingMode.TwoWay);
             }
 
             ToggleFilter = Template.FindName("PART_ToggleFilter", this) as ToggleButton;
@@ -147,7 +159,6 @@ namespace Playnite.DesktopApp.Controls.Views
                     mainModel,
                     nameof(mainModel.ProgressVisible),
                     converter: new BooleanToVisibilityConverter());
-
             }
 
             TextProgressText = Template.FindName("PART_TextProgressText", this) as TextBlock;

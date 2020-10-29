@@ -27,6 +27,10 @@ namespace Playnite.API.DesignData
 
         public IResourceProvider Resources => throw new NotImplementedException();
 
+        public IUriHandlerAPI UriHandler => throw new NotImplementedException();
+
+        public IPlayniteSettingsAPI ApplicationSettings => throw new NotImplementedException();
+
         public ILogger CreateLogger(string name)
         {
             throw new NotImplementedException();
@@ -43,6 +47,11 @@ namespace Playnite.API.DesignData
         }
 
         public GameAction ExpandGameVariables(Game game, GameAction action)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void StartGame(Guid gameId)
         {
             throw new NotImplementedException();
         }

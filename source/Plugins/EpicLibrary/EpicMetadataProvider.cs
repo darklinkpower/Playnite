@@ -1,12 +1,11 @@
 ﻿using EpicLibrary.Services;
-using Newtonsoft.Json.Linq;
+using Playnite.Common.Media.Icons;
 using Playnite.SDK;
+using Playnite.SDK.Data;
 using Playnite.SDK.Metadata;
 using Playnite.SDK.Models;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -27,10 +26,10 @@ namespace EpicLibrary
 
         public override GameMetadata GetMetadata(Game game)
         {
-            var gameInfo = new GameInfo();
+            var gameInfo = new GameInfo() { Links = new List<Link>() };
             var metadata = new GameMetadata()
             {
-                GameInfo = gameInfo,
+                GameInfo = gameInfo
             };
 
             using (var client = new WebStoreClient())
@@ -41,45 +40,62 @@ namespace EpicLibrary
                     var product = client.GetProductInfo(catalogs[0].productSlug).GetAwaiter().GetResult();
                     if (product.pages.HasItems())
                     {
-                        var page = product.pages[0];
-                        gameInfo.Description = page.data.about.description;
-                        gameInfo.Developers = new List<string>() { page.data.about.developerAttribution };
+                        var page = product.pages.FirstOrDefault(a => a.type == "productHome");
+                        if (page == null)
+                        {
+                            page = product.pages[0];
+                        }
+
+                        gameInfo.Developers = page.data.about.developerAttribution?.
+                            Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries).
+                            Select(a => a.Trim()).ToList();
+                        gameInfo.Publishers = page.data.about.publisherAttribution?.
+                            Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries).
+                            Select(a => a.Trim()).ToList();
                         metadata.BackgroundImage = new MetadataFile(page.data.hero.backgroundImageUrl);
+                        gameInfo.Links.Add(new Link(
+                            library.PlayniteApi.Resources.GetString("LOCCommonLinksStorePage"),
+                            "https://www.epicgames.com/store/en-US/product/" + catalogs[0].productSlug));
 
                         if (page.data.socialLinks.HasItems())
                         {
-                            gameInfo.Links = page.data.socialLinks.
-                                Where(a => a.Key.StartsWith("link")).
+                            var links = page.data.socialLinks.
+                                Where(a => a.Key.StartsWith("link") && !a.Value.IsNullOrEmpty()).
                                 Select(a => new Link(a.Key.Replace("link", ""), a.Value)).ToList();
+                            if (links.HasItems())
+                            {
+                                gameInfo.Links.AddRange(links);
+                            }
                         }
 
-                        if (!gameInfo.Description.IsNullOrEmpty())
+                        if (!page.data.about.description.IsNullOrEmpty())
                         {
-                            gameInfo.Description = gameInfo.Description.Replace("\n", "\n<br>");
+                            gameInfo.Description = Markup.MarkdownToHtml(page.data.about.description);
                         }
                     }
                 }
             }
 
+            gameInfo.Links.Add(new Link("PCGamingWiki", @"http://pcgamingwiki.com/w/index.php?search=" + game.Name));
+
             // There's not icon available on Epic servers so we will load one from EXE
             if (game.IsInstalled && string.IsNullOrEmpty(game.Icon))
             {
-                var playAction = api.ExpandGameVariables(game, game.PlayAction);
-                var executable = string.Empty;
-                if (File.Exists(playAction.Path))
+                var manifest = EpicLauncher.GetInstalledManifests().FirstOrDefault(a => a.AppName == game.GameId);
+                if (manifest != null)
                 {
-                    executable = playAction.Path;
-                }
-                else if (!string.IsNullOrEmpty(playAction.WorkingDir))
-                {
-                    executable = Path.Combine(playAction.WorkingDir, playAction.Path);
-                }
-
-                var exeIcon = IconExtension.ExtractIconFromExe(executable, true);
-                if (exeIcon != null)
-                {
-                    var iconName = Guid.NewGuid() + ".png";
-                    metadata.Icon = new MetadataFile(iconName, exeIcon.ToByteArray(System.Drawing.Imaging.ImageFormat.Png));
+                    var exePath = Path.Combine(manifest.InstallLocation, manifest.LaunchExecutable);
+                    if (File.Exists(exePath))
+                    {
+                        using (var ms = new MemoryStream())
+                        {
+                            if (IconExtractor.ExtractMainIconFromFile(exePath, ms))
+                            {
+                                var iconName = Guid.NewGuid() + ".ico";
+                                metadata.Icon = new MetadataFile(iconName, ms.ToArray());
+                            }
+                        }
+                    }
                 }
             }
 

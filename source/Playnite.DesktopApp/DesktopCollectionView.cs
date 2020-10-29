@@ -1,4 +1,5 @@
-﻿using Playnite.Plugins;
+﻿using Playnite.Database;
+using Playnite.Plugins;
 using Playnite.SDK;
 using Playnite.SDK.Models;
 using System;
@@ -44,7 +45,10 @@ namespace Playnite.DesktopApp
             { GroupableField.LastActivity, nameof(GamesCollectionViewEntry.LastActivitySegment) },
             { GroupableField.Added, nameof(GamesCollectionViewEntry.AddedSegment) },
             { GroupableField.Modified, nameof(GamesCollectionViewEntry.ModifiedSegment) },
-            { GroupableField.PlayTime, nameof(GamesCollectionViewEntry.PlaytimeCategory) }
+            { GroupableField.PlayTime, nameof(GamesCollectionViewEntry.PlaytimeCategory) },
+            { GroupableField.Feature, nameof(GamesCollectionViewEntry.Feature) },
+            { GroupableField.InstallationStatus, nameof(GamesCollectionViewEntry.InstallationState) },
+            { GroupableField.Name, nameof(GamesCollectionViewEntry.NameGroup) }
         };
 
         private Dictionary<GroupableField, Type> groupTypes = new Dictionary<GroupableField, Type>()
@@ -53,7 +57,8 @@ namespace Playnite.DesktopApp
             { GroupableField.Genre, typeof(Genre) },
             { GroupableField.Developer, typeof(Developer) },
             { GroupableField.Publisher, typeof(Publisher) },
-            { GroupableField.Tag, typeof(Tag) }
+            { GroupableField.Tag, typeof(Tag) },
+            { GroupableField.Feature, typeof(GameFeature) }
         };
 
         private GamesViewType? viewType = null;
@@ -84,6 +89,7 @@ namespace Playnite.DesktopApp
             Database.Series.ItemUpdated += Series_ItemUpdated;
             Database.Sources.ItemUpdated += Sources_ItemUpdated;
             Database.Tags.ItemUpdated += Tags_ItemUpdated;
+            Database.Features.ItemUpdated += Features_ItemUpdated;
             viewSettings = settings.ViewSettings;
             viewSettings.PropertyChanged += ViewSettings_PropertyChanged;
             using (CollectionView.DeferRefresh())
@@ -94,6 +100,7 @@ namespace Playnite.DesktopApp
 
         public override void Dispose()
         {
+            ClearItems();
             base.Dispose();
             Database.Games.ItemCollectionChanged -= Database_GamesCollectionChanged;
             Database.Games.ItemUpdated -= Database_GameUpdated;
@@ -107,6 +114,7 @@ namespace Playnite.DesktopApp
             Database.Series.ItemUpdated -= Series_ItemUpdated;
             Database.Sources.ItemUpdated -= Sources_ItemUpdated;
             Database.Tags.ItemUpdated -= Tags_ItemUpdated;
+            Database.Features.ItemUpdated -= Features_ItemUpdated;
             viewSettings.PropertyChanged -= ViewSettings_PropertyChanged;
         }
 
@@ -139,6 +147,7 @@ namespace Playnite.DesktopApp
                 case GroupableField.Developer:
                 case GroupableField.Publisher:
                 case GroupableField.Tag:
+                case GroupableField.Feature:
                     ViewType = GamesViewType.ListGrouped;
                     break;
                 case GroupableField.None:
@@ -157,6 +166,8 @@ namespace Playnite.DesktopApp
                 case GroupableField.Added:
                 case GroupableField.Modified:
                 case GroupableField.PlayTime:
+                    case GroupableField.InstallationStatus:
+                    case GroupableField.Name:
                     ViewType = GamesViewType.Standard;
                     break;
                 default:
@@ -175,7 +186,16 @@ namespace Playnite.DesktopApp
                 CollectionView.GroupDescriptions.Add(new PropertyGroupDescription(groupFields[viewSettings.GroupingOrder]));
                 if (CollectionView.SortDescriptions.First().PropertyName != groupFields[viewSettings.GroupingOrder])
                 {
-                    CollectionView.SortDescriptions.Insert(0, new SortDescription(groupFields[viewSettings.GroupingOrder], ListSortDirection.Ascending));
+                    var order = ListSortDirection.Ascending;
+                    if (viewSettings.GroupingOrder == GroupableField.PlayTime ||
+                        viewSettings.GroupingOrder == GroupableField.CommunityScore ||
+                        viewSettings.GroupingOrder == GroupableField.CriticScore ||
+                        viewSettings.GroupingOrder == GroupableField.UserScore)
+                    {
+                        order = ListSortDirection.Descending;
+                    }
+
+                    CollectionView.SortDescriptions.Insert(0, new SortDescription(groupFields[viewSettings.GroupingOrder], order));
                 }
             }
         }
@@ -201,7 +221,7 @@ namespace Playnite.DesktopApp
             }
         }
 
-        private IEnumerable<Guid> GetGroupingIds(GroupableField orderField, Game sourceGame)
+        private List<Guid> GetGroupingIds(GroupableField orderField, Game sourceGame)
         {
             switch (orderField)
             {
@@ -215,6 +235,8 @@ namespace Playnite.DesktopApp
                     return sourceGame.PublisherIds;
                 case GroupableField.Tag:
                     return sourceGame.TagIds;
+                case GroupableField.Feature:
+                    return sourceGame.FeatureIds;
                 case GroupableField.None:
                     return null;
                 default:
@@ -229,39 +251,59 @@ namespace Playnite.DesktopApp
                 return;
             }
 
-            Items.Clear();
+            ClearItems();
             switch (viewType)
             {
                 case GamesViewType.Standard:
-                    Items.Clear();
                     Items.AddRange(Database.Games.Select(x => new GamesCollectionViewEntry(x, GetLibraryPlugin(x), settings)));
                     break;
 
                 case GamesViewType.ListGrouped:
-                    Items.Clear();
                     Items.AddRange(Database.Games.SelectMany(x =>
                     {
+                        var entries = new List<GamesCollectionViewEntry>();
                         var ids = GetGroupingIds(viewSettings.GroupingOrder, x);
-                        if (ids?.Any() == true)
+                        if (ids.HasItems())
                         {
-                            return ids.Select(c =>
+                            foreach (var id in ids)
                             {
-                            return new GamesCollectionViewEntry(x, GetLibraryPlugin(x), groupTypes[viewSettings.GroupingOrder], c, settings);
-                            });
+                                var newItem = GamesCollectionViewEntry.GetAdvancedGroupedEntry(x, GetLibraryPlugin(x), groupTypes[viewSettings.GroupingOrder], id, Database, settings);
+                                if (newItem != null)
+                                {
+                                    entries.Add(newItem);
+                                }
+                            }
+
+                            if (entries.Count == 0)
+                            {
+                                entries.Add(new GamesCollectionViewEntry(x, GetLibraryPlugin(x), settings));
+                            }
                         }
                         else
                         {
-                            return new List<GamesCollectionViewEntry>()
-                            {
-                                new GamesCollectionViewEntry(x, GetLibraryPlugin(x), settings)
-                            };
+                            entries.Add(new GamesCollectionViewEntry(x, GetLibraryPlugin(x), settings));
                         }
+
+                        return entries;
                     }));
 
                     break;
             }
 
             this.viewType = viewType;
+        }
+
+        private void ClearItems()
+        {
+            if (Items.HasItems())
+            {
+                foreach (var item in Items)
+                {
+                    item.Dispose();
+                }
+
+                Items.Clear();
+            }
         }
 
         private void Database_PlatformUpdated(object sender, ItemUpdatedEventArgs<Platform> e)
@@ -336,6 +378,14 @@ namespace Playnite.DesktopApp
                 nameof(Game.Categories));
         }
 
+        private void Features_ItemUpdated(object sender, ItemUpdatedEventArgs<GameFeature> e)
+        {
+            DoGroupDbObjectsUpdate(
+                GroupableField.Feature, e,
+                (a, b) => a.FeatureIds?.Any() == true && b.Intersect(a.FeatureIds).Any(),
+                nameof(Game.Features));
+        }
+
         private void DoGroupDbObjectsUpdate<TItem>(
             GroupableField order,
             ItemUpdatedEventArgs<TItem> updatedItems,
@@ -373,6 +423,7 @@ namespace Playnite.DesktopApp
                 case GroupableField.Developer:
                 case GroupableField.Publisher:
                 case GroupableField.Tag:
+                case GroupableField.Feature:
                     return ViewType == GamesViewType.ListGrouped && !GetGroupingIds(viewSettings.GroupingOrder, oldData).IsListEqual(GetGroupingIds(viewSettings.GroupingOrder, newData));
                 case GroupableField.Platform:
                 case GroupableField.Series:
@@ -398,6 +449,10 @@ namespace Playnite.DesktopApp
                     return oldData.Modified != newData.Modified;
                 case GroupableField.PlayTime:
                     return oldData.Playtime != newData.Playtime;
+                case GroupableField.InstallationStatus:
+                    return oldData.IsInstalled != newData.IsInstalled;
+                case GroupableField.Name:
+                    return oldData.Name != newData.Name;
                 default:
                     throw new Exception("Uknown GroupableField");
             }
@@ -452,6 +507,7 @@ namespace Playnite.DesktopApp
                 {
                     foreach (var item in toRemove)
                     {
+                        item.Dispose();
                         Items.Remove(item);
                     }
                 }
@@ -467,20 +523,30 @@ namespace Playnite.DesktopApp
                         break;
 
                     case GamesViewType.ListGrouped:
-
+                        var entries = new List<GamesCollectionViewEntry>();
                         var ids = GetGroupingIds(viewSettings.GroupingOrder, game);
-                        if (ids?.Any() == true)
+                        if (ids.HasItems())
                         {
-                            addList.AddRange(ids.Select(c =>
+                            foreach (var id in ids)
                             {
-                                return new GamesCollectionViewEntry(game, GetLibraryPlugin(game), groupTypes[viewSettings.GroupingOrder], c, settings);
-                            }));
+                                var newItem = GamesCollectionViewEntry.GetAdvancedGroupedEntry(game, GetLibraryPlugin(game), groupTypes[viewSettings.GroupingOrder], id, Database, settings);
+                                if (newItem != null)
+                                {
+                                    entries.Add(newItem);
+                                }
+                            }
+
+                            if (entries.Count == 0)
+                            {
+                                entries.Add(new GamesCollectionViewEntry(game, GetLibraryPlugin(game), settings));
+                            }
                         }
                         else
                         {
-                            addList.Add(new GamesCollectionViewEntry(game, GetLibraryPlugin(game), settings));
+                            entries.Add(new GamesCollectionViewEntry(game, GetLibraryPlugin(game), settings));
                         }
 
+                        addList.AddRange(entries);
                         break;
                 }
             }

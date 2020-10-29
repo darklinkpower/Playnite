@@ -20,45 +20,8 @@ namespace Playnite.Services
         {
         }
 
-        public ServicesClient(string endpoint) : base(endpoint)
+        public ServicesClient(string endpoint) : base(endpoint, Updater.GetCurrentVersion())
         {
-        }
-
-        public List<PlayniteServices.Models.IGDB.ExpandedGame> GetIGDBGames(string searchName, string apiKey = null)
-        {
-            var encoded = Uri.EscapeDataString(searchName);
-            var url = string.IsNullOrEmpty(apiKey) ? $"/igdb/games/{encoded}" : $"/igdb/games/{encoded}?apikey={apiKey}";
-            return ExecuteGetRequest<List<PlayniteServices.Models.IGDB.ExpandedGame>>(url);
-        }
-
-        public ulong GetIGDBGameBySteamId(string id, string apiKey = null)
-        {
-            var url = $"/igdb/gamesBySteamId/{id}";
-            return ExecuteGetRequest<ulong>(url);
-        }
-
-        public PlayniteServices.Models.IGDB.Game GetIGDBGame(UInt64 id, string apiKey = null)
-        {
-            var url = string.IsNullOrEmpty(apiKey) ? $"/igdb/game/{id}" : $"/igdb/game/{id}?apikey={apiKey}";
-            return ExecuteGetRequest<PlayniteServices.Models.IGDB.Game>(url);
-        }
-
-        public PlayniteServices.Models.IGDB.ExpandedGame GetIGDBGameParsed(UInt64 id, string apiKey = null)
-        {
-            var url = string.IsNullOrEmpty(apiKey) ? $"/igdb/game_parsed/{id}" : $"/igdb/game_parsed/{id}?apikey={apiKey}";
-            return ExecuteGetRequest<PlayniteServices.Models.IGDB.ExpandedGame>(url);
-        }
-
-        public PlayniteServices.Models.IGDB.Company GetIGDBCompany(UInt64 id, string apiKey = null)
-        {
-            var url = string.IsNullOrEmpty(apiKey) ? $"/igdb/company/{id}" : $"/igdb/company/{id}?apikey={apiKey}";
-            return ExecuteGetRequest<PlayniteServices.Models.IGDB.Company>(url);
-        }
-
-        public PlayniteServices.Models.IGDB.Genre GetIGDBGenre(UInt64 id, string apiKey = null)
-        {
-            var url = string.IsNullOrEmpty(apiKey) ? $"/igdb/genre/{id}" : $"/igdb/genre/{id}?apikey={apiKey}";
-            return ExecuteGetRequest<PlayniteServices.Models.IGDB.Genre>(url);
         }
 
         public List<string> GetPatrons()

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
@@ -30,6 +32,7 @@ namespace Playnite.Controls
         }
 
         private CurrentImage currentImage = CurrentImage.None;
+        private object currentSource = null;
 
         internal Storyboard Image1FadeIn;
         internal Storyboard Image2FadeIn;
@@ -38,17 +41,33 @@ namespace Playnite.Controls
         internal Storyboard stateAnim;
         internal Storyboard BorderDarkenFadeOut;
 
+        #region AnimationEnabled
+
+        public static readonly DependencyProperty AnimationEnabledProperty = DependencyProperty.Register(
+            nameof(AnimationEnabled),
+            typeof(bool),
+            typeof(FadeImage),
+            new PropertyMetadata(true));
+
+        public bool AnimationEnabled
+        {
+            get { return (bool)GetValue(AnimationEnabledProperty); }
+            set { SetValue(AnimationEnabledProperty, value); }
+        }
+
+        #endregion AnimationEnabled
+
         #region Source
 
         public static readonly DependencyProperty SourceProperty = DependencyProperty.Register(
             nameof(Source),
-            typeof(string),
+            typeof(object),
             typeof(FadeImage),
             new PropertyMetadata(null, SourceChanged));
 
-        public string Source
+        public object Source
         {
-            get { return (string)GetValue(SourceProperty); }
+            get { return GetValue(SourceProperty); }
             set { SetValue(SourceProperty, value); }
         }
 
@@ -101,7 +120,7 @@ namespace Playnite.Controls
         }
 
         #endregion Strech
-        
+
         #region IsBlurEnabled
 
         public static readonly DependencyProperty IsBlurEnabledProperty = DependencyProperty.Register(
@@ -134,6 +153,22 @@ namespace Playnite.Controls
 
         #endregion IsBlurEnabled
 
+        #region HighQualityBlur
+
+        public static readonly DependencyProperty HighQualityBlurProperty = DependencyProperty.Register(
+            nameof(HighQualityBlurProperty),
+            typeof(bool),
+            typeof(FadeImage),
+            new PropertyMetadata(false, BlurSettingChanged));
+
+        public bool HighQualityBlur
+        {
+            get { return (bool)GetValue(HighQualityBlurProperty); }
+            set { SetValue(HighQualityBlurProperty, value); }
+        }
+
+        #endregion HighQualityBlur
+
         public FadeImage()
         {
             InitializeComponent();
@@ -150,11 +185,14 @@ namespace Playnite.Controls
         private void Image1FadeOut_Completed(object sender, EventArgs e)
         {
             Image1.Source = null;
+            Image1.UpdateLayout();
+            GC.Collect();
         }
 
         private void Image2FadeOut_Completed(object sender, EventArgs e)
         {
             Image2.Source = null;
+            Image2.UpdateLayout();
         }
 
         private void BorderDarkenOut_Completed(object sender, EventArgs e)
@@ -162,126 +200,158 @@ namespace Playnite.Controls
             BorderDarken.Opacity = 0;
         }
 
-        private static async void BlurSettingChanged(DependencyObject obj, DependencyPropertyChangedEventArgs args)
+        private static void BlurSettingChanged(DependencyObject obj, DependencyPropertyChangedEventArgs args)
         {
             var control = (FadeImage)obj;
-            if (control.Source.IsNullOrEmpty())
+            if (control.Source == null)
             {
                 return;
             }
 
             var blurAmount = control.BlurAmount;
             var blurEnabled = control.IsBlurEnabled;
-            var source = control.Source;
-            var image = await Task.Factory.StartNew(() =>
+            var highQuality = control.HighQualityBlur;
+            if (blurEnabled)
             {
-                var tmp = ImageSourceManager.GetImage(control.Source, false);
-                if (tmp == null)
+                control.ImageHolder.Effect = new BlurEffect()
                 {
-                    return null;
-                }
-
-                if (blurEnabled)
-                {
-                    tmp = new GaussianBlur(tmp.ToBitmap()).Process(blurAmount).ToBitmapImage();
-                    // GaussianBlur uses quite of lot of memory that's not immediately released.
-                    GC.Collect();
-                }
-
-                return tmp;
-            });
-
-            if (control.currentImage == CurrentImage.Image1)
-            {
-                control.Image1.Source = image;
+                    KernelType = KernelType.Gaussian,
+                    Radius = blurAmount,
+                    RenderingBias = highQuality ? RenderingBias.Quality : RenderingBias.Performance
+                };
             }
-            else if (control.currentImage == CurrentImage.Image2)
+            else
             {
-                control.Image2.Source = image;
+                control.ImageHolder.Effect = null;
             }
         }
 
         private static void SourceChanged(DependencyObject obj, DependencyPropertyChangedEventArgs args)
         {
             var control = (FadeImage)obj;
-            control.LoadNewSource((string)args.NewValue, (string)args.OldValue);
+            control.LoadNewSource(args.NewValue, args.OldValue);
         }
 
-        private async void LoadNewSource(string newSource, string oldSource)
+        private async void LoadNewSource(object newSource, object oldSource)
         {
+            var blurAmount = BlurAmount;
+            var blurEnabled = IsBlurEnabled;
+            var highQuality = HighQualityBlur;
             BitmapImage image = null;
-            if (!newSource.IsNullOrEmpty())
+
+            if (newSource?.Equals(currentSource) == true)
             {
-                var blurAmount = BlurAmount;
-                var blurEnabled = IsBlurEnabled;
+                return;
+            }
+
+            currentSource = newSource;
+            if (newSource != null)
+            {
                 image = await Task.Factory.StartNew(() =>
                 {
-                    var tmp = ImageSourceManager.GetImage(newSource, false);
-                    if (tmp == null)
+                    if (newSource is string str)
+                    {
+                        return ImageSourceManager.GetImage(str, false);
+                    }
+                    else if (newSource is BitmapLoadProperties props)
+                    {
+                        return ImageSourceManager.GetImage(props.Source, false, props);
+                    }
+                    else
                     {
                         return null;
                     }
-
-                    if (blurEnabled)
-                    {
-                        tmp = new GaussianBlur(tmp.ToBitmap()).Process(blurAmount).ToBitmapImage();
-                        // GaussianBlur uses quite of lot of memory that's not immediately released.
-                        GC.Collect();
-                    }
-
-                    return tmp;
                 });
             }
 
-            if (image == null)
+            if (blurEnabled)
             {
-                if (currentImage == CurrentImage.None)
+                if (ImageHolder.Effect == null)
                 {
-                    return;
+                    ImageHolder.Effect = new BlurEffect()
+                    {
+                        KernelType = KernelType.Gaussian,
+                        Radius = blurAmount,
+                        RenderingBias = highQuality ? RenderingBias.Quality : RenderingBias.Performance
+                    };
                 }
-
-                if (currentImage == CurrentImage.Image1)
-                {
-                    Image1FadeOut.Begin();
-                    BorderDarkenFadeOut.Begin();
-                }
-                else if (currentImage == CurrentImage.Image2)
-                {
-                    Image2FadeOut.Begin();
-                    BorderDarkenFadeOut.Begin();
-                }
-
-                currentImage = CurrentImage.None;
             }
             else
             {
-                if (currentImage == CurrentImage.None)
+                if (ImageHolder.Effect != null)
                 {
-                    Image1FadeOut.Stop();
-                    Image1.Source = image;
-                    Image1FadeIn.Begin();
-                    BorderDarken.Opacity = 1;
-                    BorderDarkenFadeOut.Stop();
-                    currentImage = CurrentImage.Image1;
+                    ImageHolder.Effect = null;
                 }
-                else if (currentImage == CurrentImage.Image1)
+            }
+
+            if (AnimationEnabled)
+            {
+                if (image == null)
                 {
-                    Image2FadeOut.Stop();
-                    Image2.Source = image;
-                    Image2FadeIn.Begin();
-                    Image1FadeOut.Begin();
-                    BorderDarken.Opacity = 1;
-                    BorderDarkenFadeOut.Stop();
-                    currentImage = CurrentImage.Image2;
+                    if (currentImage == CurrentImage.None)
+                    {
+                        return;
+                    }
+
+                    if (currentImage == CurrentImage.Image1)
+                    {
+                        Image1FadeOut.Begin();
+                        BorderDarkenFadeOut.Begin();
+                    }
+                    else if (currentImage == CurrentImage.Image2)
+                    {
+                        Image2FadeOut.Begin();
+                        BorderDarkenFadeOut.Begin();
+                    }
+
+                    currentImage = CurrentImage.None;
+                }
+                else
+                {
+                    if (currentImage == CurrentImage.None)
+                    {
+                        Image1FadeOut.Stop();
+                        Image1.Source = image;
+                        Image1FadeIn.Begin();
+                        BorderDarken.Opacity = 1;
+                        BorderDarkenFadeOut.Stop();
+                        currentImage = CurrentImage.Image1;
+                    }
+                    else if (currentImage == CurrentImage.Image1)
+                    {
+                        Image2FadeOut.Stop();
+                        Image2.Source = image;
+                        Image2FadeIn.Begin();
+                        Image1FadeOut.Begin();
+                        BorderDarken.Opacity = 1;
+                        BorderDarkenFadeOut.Stop();
+                        currentImage = CurrentImage.Image2;
+                    }
+                    else if (currentImage == CurrentImage.Image2)
+                    {
+                        Image1FadeOut.Stop();
+                        Image1.Source = image;
+                        Image1FadeIn.Begin();
+                        Image2FadeOut.Begin();
+                        BorderDarken.Opacity = 1;
+                        BorderDarkenFadeOut.Stop();
+                        currentImage = CurrentImage.Image1;
+                    }
+                }
+            }
+            else
+            {
+                if (currentImage == CurrentImage.Image1)
+                {
+                    Image1.Source = image;
                 }
                 else if (currentImage == CurrentImage.Image2)
                 {
-                    Image1FadeOut.Stop();
+                    Image2.Source = image;
+                }
+                else
+                {
                     Image1.Source = image;
-                    Image1FadeIn.Begin();
-                    Image2FadeOut.Begin();
-                    BorderDarken.Opacity = 1;
-                    BorderDarkenFadeOut.Stop();
                     currentImage = CurrentImage.Image1;
                 }
             }

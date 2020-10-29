@@ -17,7 +17,9 @@ namespace Playnite.API
 {
     public class PlayniteAPI : IPlayniteAPI
     {
-        public PlayniteAPI(            
+        private readonly GamesEditor gameEditor;
+
+        public PlayniteAPI(
             IGameDatabaseAPI databaseApi,
             IDialogsFactory dialogs,
             IMainViewAPI mainViewApi,
@@ -25,7 +27,10 @@ namespace Playnite.API
             IPlaynitePathsAPI pathsApi,
             IWebViewFactory webViewFactory,
             IResourceProvider resources,
-            INotificationsAPI notifications)
+            INotificationsAPI notifications,
+            GamesEditor gameEditor,
+            IUriHandlerAPI uriHandler,
+            IPlayniteSettingsAPI settingsApi)
         {
             WebViews = webViewFactory;
             Paths = pathsApi;
@@ -35,6 +40,9 @@ namespace Playnite.API
             Database = databaseApi;
             Resources = resources;
             Notifications = notifications;
+            this.gameEditor = gameEditor;
+            UriHandler = uriHandler;
+            ApplicationSettings = settingsApi;
         }
 
         public IDialogsFactory Dialogs { get; }
@@ -52,6 +60,10 @@ namespace Playnite.API
         public IResourceProvider Resources { get; }
 
         public INotificationsAPI Notifications { get; }
+
+        public IUriHandlerAPI UriHandler { get; }
+
+        public IPlayniteSettingsAPI ApplicationSettings { get; }
 
         public string ExpandGameVariables(Game game, string inputString)
         {
@@ -72,6 +84,19 @@ namespace Playnite.API
         {
             var className = (new StackFrame(1)).GetMethod().DeclaringType.Name;
             return CreateLogger(className);
+        }
+
+        public void StartGame(Guid gameId)
+        {
+            var game = Database.Games.Get(gameId);
+            if (game == null)
+            {
+                throw new Exception($"Can't start game, game ID {gameId} not found.");
+            }
+            else
+            {
+                gameEditor.PlayGame(game);
+            }
         }
     }
 }

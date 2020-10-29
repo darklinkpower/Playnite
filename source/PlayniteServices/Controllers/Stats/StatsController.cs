@@ -1,5 +1,6 @@
 ﻿using LiteDB;
 using Microsoft.AspNetCore.Mvc;
+using PlayniteServices.Filters;
 using PlayniteServices.Models.Playnite;
 using PlayniteServices.Models.Stats;
 using System;
@@ -8,20 +9,15 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace PlayniteServices.Controllers.Stats
-{    
+{
+    [ServiceFilter(typeof(ServiceKeyFilter))]
     public class StatsController : Controller
     {
         private static LiteCollection<User> usersColl = Program.Database.GetCollection<User>("PlayniteUsers");
 
-        [HttpGet("stats/{serviceKey}")]
-        public GenericResponse GetStarts(string serviceKey)
+        [HttpGet("stats/")]
+        public GenericResponse GetStarts()
         {
-            var key = Startup.Configuration.GetSection("ServiceKey");
-            if (key == null || key.Value != serviceKey)
-            {
-                return new ErrorResponse(new Exception("Invalid service key."));
-            }
-
             var stats = new ServiceStats();
             var users = usersColl.FindAll().ToList();
             stats.UserCount = users.Count;
@@ -44,21 +40,14 @@ namespace PlayniteServices.Controllers.Stats
                 stats.UsersByWinVersion.Add(winGroup.Key, winGroup.Count());
             }
 
-            stats.RecentUsers = lastWeekUsers.OrderBy(a => a.LastLaunch).TakeLast(20).ToList();
             stats.X64Count = lastWeekUsers.Where(a => a.Is64Bit).Count();
             stats.X86Count = lastWeekUsers.Where(a => !a.Is64Bit).Count();
             return new ServicesResponse<ServiceStats>(stats);
         }
 
-        [HttpGet("stats/drop/{serviceKey}")]
-        public GenericResponse DropStats(string serviceKey)
+        [HttpGet("stats/drop/")]
+        public GenericResponse DropStats()
         {
-            var key = Startup.Configuration.GetSection("ServiceKey");
-            if (key == null || key.Value != serviceKey)
-            {
-                return new ErrorResponse(new Exception("Invalid service key."));
-            }            
-
             return new ServicesResponse<bool>(Program.Database.DropCollection("PlayniteUsers"));
         }
     }

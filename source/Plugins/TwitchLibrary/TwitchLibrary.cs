@@ -67,9 +67,10 @@ namespace TwitchLibrary
                         InstallDirectory = Paths.FixSeparators(program.InstallLocation),
                         GameId = gameId,
                         Source = "Twitch",
-                        Name = program.DisplayName,
+                        Name = program.DisplayName.RemoveTrademarks(),
                         IsInstalled = true,
-                        PlayAction = GetPlayAction(gameId)
+                        PlayAction = GetPlayAction(gameId),
+                        Platform = "PC"
                     };
 
                     games.Add(game.GameId, game);
@@ -115,7 +116,6 @@ namespace TwitchLibrary
                 throw new Exception("Authentication is required.");
             }
 
-
             var games = new List<GameInfo>();
             var entitlements = AmazonEntitlementClient.GetAccountEntitlements(token);
 
@@ -130,27 +130,34 @@ namespace TwitchLibrary
                 {
                     Source = "Twitch",
                     GameId = item.product.id,
-                    Name = item.product.title
+                    Name = item.product.title.RemoveTrademarks(),
+                    Platform = "PC"
                 };
 
                 games.Add(game);
             }
 
-            return games;            
+            return games;
         }
 
         #region ILibraryPlugin
 
         public override LibraryClient Client => new TwitchClient();
-        
+
         public override string Name => "Twitch";
 
         public override string LibraryIcon => Twitch.Icon;
 
         public override Guid Id => Guid.Parse("E2A7D494-C138-489D-BB3F-1D786BEEB675");
 
+        public override LibraryPluginCapabilities Capabilities { get; } = new LibraryPluginCapabilities
+        {
+            CanShutdownClient = true
+        };
+
         public override ISettings GetSettings(bool firstRunSettings)
         {
+            LibrarySettings.IsFirstRunUse = firstRunSettings;
             return LibrarySettings;
         }
 
@@ -185,14 +192,19 @@ namespace TwitchLibrary
                 }
             }
 
-            if (LibrarySettings.ImportUninstalledGames)
+            if (LibrarySettings.ConnectAccount)
             {
                 try
                 {
-                    var uninstalled = GetLibraryGames();
-                    logger.Debug($"Found {uninstalled.Count} library Twitch games.");
+                    var libraryGames = GetLibraryGames();
+                    logger.Debug($"Found {libraryGames.Count} library Twitch games.");
 
-                    foreach (var game in uninstalled)
+                    if (!LibrarySettings.ImportUninstalledGames)
+                    {
+                        libraryGames = libraryGames.Where(lg => installedGames.ContainsKey(lg.GameId)).ToList();
+                    }
+
+                    foreach (var game in libraryGames)
                     {
                         if (installedGames.TryGetValue(game.GameId, out var installed))
                         {
@@ -207,18 +219,19 @@ namespace TwitchLibrary
                 }
                 catch (Exception e) when (!PlayniteApi.ApplicationInfo.ThrowAllErrors)
                 {
-                    logger.Error(e, "Failed to import uninstalled Twitch games.");
+                    logger.Error(e, "Failed to import linked account Twitch games details.");
                     importError = e;
                 }
             }
 
             if (importError != null)
             {
-                PlayniteApi.Notifications.Add(
+                PlayniteApi.Notifications.Add(new NotificationMessage(
                     dbImportMessageId,
                     string.Format(PlayniteApi.Resources.GetString("LOCLibraryImportError"), Name) +
                     System.Environment.NewLine + importError.Message,
-                    NotificationType.Error);
+                    NotificationType.Error,
+                    () => OpenSettingsView()));
             }
             else
             {

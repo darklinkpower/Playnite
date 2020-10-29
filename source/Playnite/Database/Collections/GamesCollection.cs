@@ -18,7 +18,7 @@ namespace Playnite.Database
             game.IsUninstalling = false;
             game.IsLaunching = false;
             game.IsRunning = false;
-        })
+        }, type: GameDatabaseCollection.Games)
         {
             db = database;
         }
@@ -28,14 +28,24 @@ namespace Playnite.Database
             throw new NotSupportedException();
         }
 
+        public override Game Add(string itemName, Func<Game, string, bool> existingComparer)
+        {
+            throw new NotSupportedException();
+        }
+
         public override IEnumerable<Game> Add(List<string> items)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override IEnumerable<Game> Add(List<string> itemsToAdd, Func<Game, string, bool> existingComparer)
         {
             throw new NotSupportedException();
         }
 
         public override void Add(Game item)
         {
-            item.Added = DateTime.Today;
+            item.Added = DateTime.Now;
             base.Add(item);
         }
 
@@ -43,7 +53,7 @@ namespace Playnite.Database
         {
             foreach (var item in items)
             {
-                item.Added = DateTime.Today;
+                item.Added = DateTime.Now;
             }
 
             base.Add(items);
@@ -89,7 +99,7 @@ namespace Playnite.Database
                 else
                 {
                     db.RemoveFile(dbItem.BackgroundImage);
-                }                    
+                }
             }
 
             var result = base.Remove(items);

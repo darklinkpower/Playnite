@@ -69,19 +69,15 @@ namespace Playnite.DesktopApp.Controls
                 return;
             }
 
+            var oldVal = (SelectableIdItemList)e.OldValue;
+            if (oldVal != null)
+            {
+                oldVal.SelectionChanged -= box.List_SelectionChanged;
+            }
+
             var list = (SelectableIdItemList)e.NewValue;
             box.IgnoreChanges = true;
-            list.SelectionChanged += (s, a) =>
-            {
-                if (!box.IgnoreChanges)
-                {
-                    box.IgnoreChanges = true;
-                    box.FilterProperties = new FilterItemProperites { Ids = list.GetSelectedIds() };
-                    box.OnFullTextTextChanged();
-                    box.IgnoreChanges = false;
-                }
-            };
-
+            list.SelectionChanged += box.List_SelectionChanged;
             if (box.FilterProperties != null)
             {
                 list.SetSelection(box.FilterProperties.Ids);
@@ -89,6 +85,17 @@ namespace Playnite.DesktopApp.Controls
 
             box.OnFullTextTextChanged();
             box.IgnoreChanges = false;
+        }
+
+        public void List_SelectionChanged(object sender, EventArgs e)
+        {
+            if (!IgnoreChanges)
+            {
+                IgnoreChanges = true;
+                FilterProperties = new FilterItemProperites { Ids = ItemsList.GetSelectedIds() };
+                OnFullTextTextChanged();
+                IgnoreChanges = false;
+            }
         }
 
         public FilterItemProperites FilterProperties
@@ -109,7 +116,7 @@ namespace Playnite.DesktopApp.Controls
             typeof(FilterItemProperites),
             typeof(FilterSelectionBox),
             new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, FilterPropertiesPropertyChangedCallback));
-        
+
         private static void FilterPropertiesPropertyChangedCallback(DependencyObject sender, DependencyPropertyChangedEventArgs e)
         {
             var box = sender as FilterSelectionBox;
@@ -182,7 +189,7 @@ namespace Playnite.DesktopApp.Controls
         }
 
         private void ClearButton_Click(object sender, RoutedEventArgs e)
-        {            
+        {
             FilterProperties = null;
             IgnoreChanges = true;
             ItemsList?.SetSelection(null);

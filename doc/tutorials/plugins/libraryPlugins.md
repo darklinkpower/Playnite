@@ -3,6 +3,7 @@ Library Plugins
 
 To implement library plugin:
 
+* Read the introduction to [extensions](../intro.md) and [plugins](plugins.md).
 * Create new public class inheriting from [LibraryPlugin](xref:Playnite.SDK.Plugins.LibraryPlugin) abstract class.
 * Add implementation for mandatory abstract members.
 
@@ -25,6 +26,18 @@ Mandatory members
 | InstallDirectory | Installation location. Only if game is reported as installed via `State` property.  |
 
 You can implement additional functionality by overriding virtual methods from [LibraryPlugin](xref:Playnite.SDK.Plugins.LibraryPlugin) base class.
+
+Capabilities
+---------------------
+
+If you want to provide extra features for specific library integration, like ability to close third party client after the game is close, then implemented `Capabilities` property that represents [LibraryPluginCapabilities](xref:Playnite.SDK.Plugins.LibraryPluginCapabilities).
+
+### Supported capabilities
+
+| Capability | Description |
+| -- | -- |
+| CanShutdownClient | When supported, library's client object has to implement `Shutdown` method. |
+| HasCustomizedGameImport | Specifies that library is in full control over the game import mechanism. In this case the library should implement `ImportGames` method instead of `GetGames`.  |
 
 Example plugin
 ---------------------

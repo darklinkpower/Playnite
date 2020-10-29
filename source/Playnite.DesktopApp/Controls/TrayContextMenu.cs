@@ -20,6 +20,7 @@ namespace Playnite.DesktopApp.Controls
 {
     public class TrayContextMenu : ContextMenu
     {
+        private static readonly ILogger logger = LogManager.GetLogger();
         private DesktopAppViewModel mainModel;
 
         static TrayContextMenu()
@@ -34,16 +35,12 @@ namespace Playnite.DesktopApp.Controls
         public TrayContextMenu(DesktopAppViewModel model)
         {
             mainModel = model;
-            mainModel.GamesEditor.PropertyChanged += GamesEditor_PropertyChanged;
-            InitializeItems();
+            Opened += TrayContextMenu_Opened;
         }
 
-        private void GamesEditor_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void TrayContextMenu_Opened(object sender, RoutedEventArgs e)
         {
-            if (e.PropertyName == nameof(GamesEditor.LastGames))
-            {
-                InitializeItems();
-            }
+            InitializeItems();
         }
 
         private MenuItem AddMenuChild(
@@ -59,7 +56,11 @@ namespace Playnite.DesktopApp.Controls
                 CommandParameter = commandParameter
             };
 
-            if (locString.StartsWith("LOC"))
+            if (locString.IsNullOrEmpty())
+            {
+                item.Header = "<NO_STRING>";
+            }
+            else if (locString.StartsWith("LOC"))
             {
                 item.SetResourceReference(MenuItem.HeaderProperty, locString);
             }
@@ -80,7 +81,8 @@ namespace Playnite.DesktopApp.Controls
         private void InitializeItems()
         {
             Items.Clear();
-            foreach (var game in mainModel.GamesEditor.LastGames)
+
+            foreach (var game in mainModel.GamesEditor.QuickLaunchItems)
             {
                 object icon = null;
                 if (!game.Icon.IsNullOrEmpty())
@@ -102,26 +104,39 @@ namespace Playnite.DesktopApp.Controls
 
                 AddMenuChild(Items, game.Name, mainModel.StartGameCommand, game, icon);
             }
-            
+
             Items.Add(new Separator());
             AddMenuChild(Items, "LOCOpenPlaynite", mainModel.ShowWindowCommand);
 
-            var openClientItem = AddMenuChild(Items, "LOCMenuOpenClient", null);
+            var openClientItem = AddMenuChild(Items, "LOCMenuClients", null);
             foreach (var tool in mainModel.ThirdPartyTools)
             {
-                var item = new MenuItem
+                openClientItem.Items.Add(new MenuItem
                 {
                     Header = tool.Name,
                     Command = mainModel.ThirdPartyToolOpenCommand,
-                    CommandParameter = tool
-                };
+                    CommandParameter = tool,
+                    Icon = tool.Icon
+                });
+            }
 
-                if (tool.Client?.Icon != null && File.Exists(tool.Client.Icon))
+            if (mainModel.Database.SoftwareApps.HasItems())
+            {
+                var toolsItem = AddMenuChild(Items, "LOCMenuTools", null);
+                foreach (var tool in mainModel.Database.SoftwareApps.OrderBy(a => a.Name))
                 {
-                    item.Icon = Images.GetImageFromFile(tool.Client.Icon);
-                }
+                    object icon = null;
+                    if (!tool.Icon.IsNullOrEmpty())
+                    {
+                        var path = mainModel.Database.GetFullFilePath(tool.Icon);
+                        if (File.Exists(path))
+                        {
+                            icon = Images.GetImageFromFile(path);
+                        }
+                    }
 
-                openClientItem.Items.Add(item);
+                    AddMenuChild(toolsItem.Items, tool.Name, mainModel.StartSoftwareToolCommand, tool, icon);
+                }
             }
 
             Items.Add(new Separator());

@@ -1,6 +1,9 @@
 ﻿using Playnite.Common;
+using Playnite.Controls;
+using Playnite.DesktopApp.ViewModels;
 using Playnite.DesktopApp.Windows;
 using Playnite.SDK;
+using Playnite.ViewModels;
 using Playnite.Windows;
 using System;
 using System.Collections.Generic;
@@ -77,12 +80,12 @@ namespace Playnite.DesktopApp
 
         public StringSelectionDialogResult SelectString(string messageBoxText, string caption, string defaultInput)
         {
-            return Invoke(() => new MessageBoxWindow().ShowInput(WindowManager.CurrentWindow, messageBoxText, caption, defaultInput));           
+            return Invoke(() => new MessageBoxWindow().ShowInput(WindowManager.CurrentWindow, messageBoxText, caption, defaultInput));
         }
 
         public MessageBoxResult ShowMessage(string messageBoxText, string caption, MessageBoxButton button, MessageBoxImage icon, MessageBoxResult defaultResult, MessageBoxOptions options)
         {
-            return Invoke(() => new MessageBoxWindow().Show(WindowManager.CurrentWindow, messageBoxText, caption, button, icon, defaultResult, options));        
+            return Invoke(() => new MessageBoxWindow().Show(WindowManager.CurrentWindow, messageBoxText, caption, button, icon, defaultResult, options));
         }
 
         public MessageBoxResult ShowMessage(string messageBoxText, string caption, MessageBoxButton button, MessageBoxImage icon, MessageBoxResult defaultResult)
@@ -112,12 +115,70 @@ namespace Playnite.DesktopApp
 
         public void ShowSelectableString(string messageBoxText, string caption, string inputText)
         {
-            Invoke(() => new MessageBoxWindow().ShowInputReadOnly(WindowManager.CurrentWindow, messageBoxText, caption, inputText));            
+            Invoke(() => new MessageBoxWindow().ShowInputReadOnly(WindowManager.CurrentWindow, messageBoxText, caption, inputText));
         }
 
         public MessageBoxResult ShowErrorMessage(string messageBoxText, string caption)
         {
             return ShowMessage(messageBoxText, caption, MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
+        public MessageBoxOption ShowMessage(string messageBoxText, string caption, MessageBoxImage icon, List<MessageBoxOption> options)
+        {
+            return Invoke(() => new MessageBoxWindow().ShowCustom(WindowManager.CurrentWindow, messageBoxText, caption, icon, options));
+        }
+
+        public ImageFileOption ChooseImageFile(List<ImageFileOption> files, string caption = null, double itemWidth = 240, double itemHeight = 180)
+        {
+            return Invoke(() =>
+            {
+                var model = new ImageSelectionViewModel(files, new ImageSelectionWindowFactory(), caption, itemWidth, itemHeight);
+                if (model.OpenView() == true)
+                {
+                    return model.SelectedImage;
+                }
+                else
+                {
+                    return null;
+                }
+            });
+        }
+
+        public GenericItemOption ChooseItemWithSearch(List<GenericItemOption> items, Func<string, List<GenericItemOption>> searchFunction, string defaultSearch = null, string caption = null)
+        {
+            return Invoke(() =>
+            {
+                var model = new ItemSelectionWithSearchViewModel(new ItemSelectionWithSearchWindowFactory(), searchFunction, defaultSearch, caption);
+                if (model.OpenView() == true)
+                {
+                    return model.SelectedResult;
+                }
+                else
+                {
+                    return null;
+                }
+            });
+        }
+
+        public GlobalProgressResult ActivateGlobalProgress(Action<GlobalProgressActionArgs> progresAction, GlobalProgressOptions progressArgs)
+        {
+            return Invoke(() => GlobalProgress.ActivateProgress(progresAction, progressArgs));
+        }
+
+        public Window CreateWindow(WindowCreationOptions options)
+        {
+            return new WindowBase()
+            {
+                ShowMaximizeButton = options.ShowMaximizeButton,
+                ShowMinimizeButton = options.ShowMinimizeButton,
+                ShowCloseButton = options.ShowCloseButton,
+                Style = ResourceProvider.GetResource("StandardWindowStyle") as Style
+            };
+        }
+
+        public Window GetCurrentAppWindow()
+        {
+            return WindowManager.CurrentWindow;
         }
     }
 }

@@ -12,8 +12,8 @@
         xmlns:pmrk="clr-namespace:Playnite.DesktopApp.Markup"
         mc:Ignorable="d"
         Title="Playnite" ShowTitle="False"
-        Loaded="Window_Loaded"
         Width="1280" Height="900"
+        MinWidth="640" MinHeight="480"
         WindowStartupLocation="CenterScreen"
         Visibility="{Binding Visibility, Mode=TwoWay}"
         WindowState="{Binding WindowState, Mode=TwoWay}"
@@ -65,9 +65,15 @@
         <KeyBinding Command="{Binding OpenSearchCommand}"
                 Key ="{Binding OpenSearchCommand.Gesture.Key}"
                 Modifiers="{Binding OpenSearchCommand.Gesture.Modifiers}" />
+        <KeyBinding Command="{Binding ToggleExplorerPanelCommand}"
+                Key ="{Binding ToggleExplorerPanelCommand.Gesture.Key}"
+                Modifiers="{Binding ToggleExplorerPanelCommand.Gesture.Modifiers}" />
         <KeyBinding Command="{Binding ToggleFilterPanelCommand}"
                 Key ="{Binding ToggleFilterPanelCommand.Gesture.Key}"
                 Modifiers="{Binding ToggleFilterPanelCommand.Gesture.Modifiers}" />
+        <KeyBinding Command="{Binding SelectRandomGameCommand}"
+                Key ="{Binding SelectRandomGameCommand.Gesture.Key}"
+                Modifiers="{Binding SelectRandomGameCommand.Gesture.Modifiers}" />
         <KeyBinding Command="{Binding OpenDbFieldsManagerCommand}"
                 Key ="{Binding OpenDbFieldsManagerCommand.Gesture.Key}"
                 Modifiers="{Binding OpenDbFieldsManagerCommand.Gesture.Modifiers}" />

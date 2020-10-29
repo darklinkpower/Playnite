@@ -29,7 +29,7 @@ namespace Playnite.Tests.Metadata
         [Test]
         public void ParseGamePage_MetadataParsingTest()
         {
-            var wiki = new WikipediaMetadataProvider();
+            var wiki = new WikipediaMetadataPlugin(null);
 
             // Standard page
             var metadata = wiki.ParseGamePage(wiki.GetPage("Guild Wars 2"));
@@ -67,9 +67,6 @@ namespace Playnite.Tests.Metadata
 
             // Different formats
             metadata = wiki.ParseGamePage(wiki.GetPage("Dungeon Siege"));
-            ValidateGameDate(metadata);
-
-            metadata = wiki.ParseGamePage(wiki.GetPage("MotoGP 3: Ultimate Racing Technology"));
             ValidateGameDate(metadata);
 
             metadata = wiki.ParseGamePage(wiki.GetPage("Quake 4"));

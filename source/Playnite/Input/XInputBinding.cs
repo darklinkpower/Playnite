@@ -104,34 +104,8 @@ namespace Playnite.Input
         private int resendDelay = 700;
         private int resendRate = 80;
 
-        private Dictionary<XInputButton, ButtonState> prevStates = new Dictionary<XInputButton, ButtonState>()
-        {
-            {  XInputButton.A, ButtonState.Released },
-            {  XInputButton.B, ButtonState.Released },
-            {  XInputButton.Back, ButtonState.Released },
-            {  XInputButton.DPadDown, ButtonState.Released },
-            {  XInputButton.DPadLeft, ButtonState.Released },
-            {  XInputButton.DPadRight, ButtonState.Released },
-            {  XInputButton.DPadUp, ButtonState.Released },
-            {  XInputButton.Guide, ButtonState.Released },
-            {  XInputButton.LeftShoulder, ButtonState.Released },
-            {  XInputButton.LeftStick, ButtonState.Released },
-            {  XInputButton.LeftStickDown, ButtonState.Released },
-            {  XInputButton.LeftStickLeft, ButtonState.Released },
-            {  XInputButton.LeftStickRight, ButtonState.Released },
-            {  XInputButton.LeftStickUp, ButtonState.Released },
-            {  XInputButton.RightShoulder, ButtonState.Released },
-            {  XInputButton.RightStick, ButtonState.Released },
-            {  XInputButton.RightStickDown, ButtonState.Released },
-            {  XInputButton.RightStickLeft, ButtonState.Released },
-            {  XInputButton.RightStickRight, ButtonState.Released },
-            {  XInputButton.RightStickUp, ButtonState.Released },
-            {  XInputButton.Start, ButtonState.Released },
-            {  XInputButton.TriggerLeft, ButtonState.Released },
-            {  XInputButton.TriggerRight, ButtonState.Released },
-            {  XInputButton.X, ButtonState.Released },
-            {  XInputButton.Y, ButtonState.Released }
-        };
+        private Dictionary<PlayerIndex, Dictionary<XInputButton, ButtonState>> prevStates =
+            new Dictionary<PlayerIndex, Dictionary<XInputButton, ButtonState>>();
 
         private Dictionary<XInputButton, VirtualKeyCode> keyboardMap = new Dictionary<XInputButton, VirtualKeyCode>()
         {
@@ -193,16 +167,48 @@ namespace Playnite.Input
 
         private readonly SynchronizationContext context;
         private readonly PlayniteApplication application;
-             
+
         private InputManager inputManager;
         private uint lastState = 0;
 
         public XInputDevice(InputManager input, PlayniteApplication app)
-        {            
+        {
+            foreach (PlayerIndex index in Enum.GetValues(typeof(PlayerIndex)))
+            {
+                prevStates.Add(index, new Dictionary<XInputButton, ButtonState>()
+                {
+                    {  XInputButton.A, ButtonState.Released },
+                    {  XInputButton.B, ButtonState.Released },
+                    {  XInputButton.Back, ButtonState.Released },
+                    {  XInputButton.DPadDown, ButtonState.Released },
+                    {  XInputButton.DPadLeft, ButtonState.Released },
+                    {  XInputButton.DPadRight, ButtonState.Released },
+                    {  XInputButton.DPadUp, ButtonState.Released },
+                    {  XInputButton.Guide, ButtonState.Released },
+                    {  XInputButton.LeftShoulder, ButtonState.Released },
+                    {  XInputButton.LeftStick, ButtonState.Released },
+                    {  XInputButton.LeftStickDown, ButtonState.Released },
+                    {  XInputButton.LeftStickLeft, ButtonState.Released },
+                    {  XInputButton.LeftStickRight, ButtonState.Released },
+                    {  XInputButton.LeftStickUp, ButtonState.Released },
+                    {  XInputButton.RightShoulder, ButtonState.Released },
+                    {  XInputButton.RightStick, ButtonState.Released },
+                    {  XInputButton.RightStickDown, ButtonState.Released },
+                    {  XInputButton.RightStickLeft, ButtonState.Released },
+                    {  XInputButton.RightStickRight, ButtonState.Released },
+                    {  XInputButton.RightStickUp, ButtonState.Released },
+                    {  XInputButton.Start, ButtonState.Released },
+                    {  XInputButton.TriggerLeft, ButtonState.Released },
+                    {  XInputButton.TriggerRight, ButtonState.Released },
+                    {  XInputButton.X, ButtonState.Released },
+                    {  XInputButton.Y, ButtonState.Released }
+                });
+            }
+
             inputManager = input;
             application = app;
-            context = SynchronizationContext.Current;           
-            
+            context = SynchronizationContext.Current;
+
             Task.Run(async () =>
             {
                 while (true)
@@ -216,28 +222,28 @@ namespace Playnite.Input
                     var state = GamePad.GetState(PlayerIndex.One);
                     if (state.IsConnected)
                     {
-                        ProcessState(state);
+                        ProcessState(state, PlayerIndex.One);
                         await Task.Delay(pollingRate);
                     }
 
                     state = GamePad.GetState(PlayerIndex.Two);
                     if (state.IsConnected)
                     {
-                        ProcessState(state);
+                        ProcessState(state, PlayerIndex.Two);
                         await Task.Delay(pollingRate);
                     }
 
                     state = GamePad.GetState(PlayerIndex.Three);
                     if (state.IsConnected)
                     {
-                        ProcessState(state);
+                        ProcessState(state, PlayerIndex.Three);
                         await Task.Delay(pollingRate);
                     }
 
                     state = GamePad.GetState(PlayerIndex.Four);
                     if (state.IsConnected)
                     {
-                        ProcessState(state);
+                        ProcessState(state, PlayerIndex.Four);
                         await Task.Delay(pollingRate);
                     }
 
@@ -246,35 +252,51 @@ namespace Playnite.Input
             });
         }
 
-        private void ProcessState(GamePadState state)
+        private void ProcessState(GamePadState state, PlayerIndex playniteIndex)
         {
             lastState = state.PacketNumber;
 
-            ProcessButtonState(state.Buttons.A, XInputButton.A);
-            ProcessButtonState(state.Buttons.B, XInputButton.B);
-            ProcessButtonState(state.Buttons.Back, XInputButton.Back);
-            ProcessButtonState(state.Buttons.Guide, XInputButton.Guide);
-            ProcessButtonState(state.Buttons.LeftShoulder, XInputButton.LeftShoulder);
-            ProcessButtonState(state.Buttons.LeftStick, XInputButton.LeftStick);
-            ProcessButtonState(state.Buttons.RightShoulder, XInputButton.RightShoulder);
-            ProcessButtonState(state.Buttons.RightStick, XInputButton.RightStick);
-            ProcessButtonState(state.Buttons.Start, XInputButton.Start);
-            ProcessButtonState(state.Buttons.X, XInputButton.X);
-            ProcessButtonState(state.Buttons.Y, XInputButton.Y);
-            ProcessButtonState(state.DPad.Down, XInputButton.DPadDown);
-            ProcessButtonState(state.DPad.Left, XInputButton.DPadLeft);
-            ProcessButtonState(state.DPad.Right, XInputButton.DPadRight);
-            ProcessButtonState(state.DPad.Up, XInputButton.DPadUp);
-            ProcessAxisState(state.Triggers.Left, XInputButton.TriggerLeft, true);
-            ProcessAxisState(state.Triggers.Right, XInputButton.TriggerRight, true);
-            ProcessAxisState(state.ThumbSticks.Left.X, XInputButton.LeftStickLeft, false);
-            ProcessAxisState(state.ThumbSticks.Left.X, XInputButton.LeftStickRight, true);
-            ProcessAxisState(state.ThumbSticks.Left.Y, XInputButton.LeftStickUp, true);
-            ProcessAxisState(state.ThumbSticks.Left.Y, XInputButton.LeftStickDown, false);
-            ProcessAxisState(state.ThumbSticks.Right.X, XInputButton.RightStickLeft, false);
-            ProcessAxisState(state.ThumbSticks.Right.X, XInputButton.RightStickRight, true);
-            ProcessAxisState(state.ThumbSticks.Right.Y, XInputButton.RightStickUp, true);
-            ProcessAxisState(state.ThumbSticks.Right.Y, XInputButton.RightStickDown, false);
+            ProcessButtonState(state.Buttons.A, XInputButton.A, playniteIndex);
+            ProcessButtonState(state.Buttons.B, XInputButton.B, playniteIndex);
+            ProcessButtonState(state.Buttons.Back, XInputButton.Back, playniteIndex);
+            ProcessButtonState(state.Buttons.Guide, XInputButton.Guide, playniteIndex);
+            ProcessButtonState(state.Buttons.LeftShoulder, XInputButton.LeftShoulder, playniteIndex);
+            ProcessButtonState(state.Buttons.LeftStick, XInputButton.LeftStick, playniteIndex);
+            ProcessButtonState(state.Buttons.RightShoulder, XInputButton.RightShoulder, playniteIndex);
+            ProcessButtonState(state.Buttons.RightStick, XInputButton.RightStick, playniteIndex);
+            ProcessButtonState(state.Buttons.Start, XInputButton.Start, playniteIndex);
+            ProcessButtonState(state.Buttons.X, XInputButton.X, playniteIndex);
+            ProcessButtonState(state.Buttons.Y, XInputButton.Y, playniteIndex);
+            ProcessButtonState(state.DPad.Down, XInputButton.DPadDown, playniteIndex);
+            ProcessButtonState(state.DPad.Left, XInputButton.DPadLeft, playniteIndex);
+            ProcessButtonState(state.DPad.Right, XInputButton.DPadRight, playniteIndex);
+            ProcessButtonState(state.DPad.Up, XInputButton.DPadUp, playniteIndex);
+            ProcessAxisState(state.Triggers.Left, XInputButton.TriggerLeft, true, playniteIndex);
+            ProcessAxisState(state.Triggers.Right, XInputButton.TriggerRight, true, playniteIndex);
+            ProcessAxisState(state.ThumbSticks.Left.X, XInputButton.LeftStickLeft, false, playniteIndex);
+            ProcessAxisState(state.ThumbSticks.Left.X, XInputButton.LeftStickRight, true, playniteIndex);
+            ProcessAxisState(state.ThumbSticks.Left.Y, XInputButton.LeftStickUp, true, playniteIndex);
+            ProcessAxisState(state.ThumbSticks.Left.Y, XInputButton.LeftStickDown, false, playniteIndex);
+            ProcessAxisState(state.ThumbSticks.Right.X, XInputButton.RightStickLeft, false, playniteIndex);
+            ProcessAxisState(state.ThumbSticks.Right.X, XInputButton.RightStickRight, true, playniteIndex);
+            ProcessAxisState(state.ThumbSticks.Right.Y, XInputButton.RightStickUp, true, playniteIndex);
+            ProcessAxisState(state.ThumbSticks.Right.Y, XInputButton.RightStickDown, false, playniteIndex);
+        }
+
+        private bool IsButtonNotNavigation(XInputButton button)
+        {
+            return button == XInputButton.A ||
+                   button == XInputButton.B ||
+                   button == XInputButton.Back ||
+                   button == XInputButton.Guide ||
+                   button == XInputButton.LeftShoulder ||
+                   button == XInputButton.LeftStick ||
+                   button == XInputButton.None ||
+                   button == XInputButton.RightShoulder ||
+                   button == XInputButton.RightStick ||
+                   button == XInputButton.Start ||
+                   button == XInputButton.X ||
+                   button == XInputButton.Y;
         }
 
         private bool ShouldResendKey(XInputButton button)
@@ -289,26 +311,33 @@ namespace Playnite.Input
             }
             else
             {
-                if (!state.IsReSending && elapsed < resendDelay)
+                if (IsButtonNotNavigation(button))
                 {
                     sendInput = false;
                 }
-                else if (!state.IsReSending && elapsed > resendDelay)
-                {
-                    state.IsReSending = true;
-                    state.Watch.Restart();
-                    sendInput = true;
-                }
                 else
                 {
-                    if (state.IsReSending && elapsed > resendRate)
+                    if (!state.IsReSending && elapsed < resendDelay)
                     {
+                        sendInput = false;
+                    }
+                    else if (!state.IsReSending && elapsed > resendDelay)
+                    {
+                        state.IsReSending = true;
                         state.Watch.Restart();
                         sendInput = true;
                     }
+                    else
+                    {
+                        if (state.IsReSending && elapsed > resendRate)
+                        {
+                            state.Watch.Restart();
+                            sendInput = true;
+                        }
+                    }
                 }
             }
-            
+
             return sendInput;
         }
 
@@ -319,38 +348,38 @@ namespace Playnite.Input
             state.IsReSending = false;
         }
 
-        private void ProcessButtonState(ButtonState currentState, XInputButton button)
-        {            
+        private void ProcessButtonState(ButtonState currentState, XInputButton button, PlayerIndex playniteIndex)
+        {
             if (currentState == ButtonState.Pressed && ShouldResendKey(button))
             {
                 SendXInput(button, true);
-                prevStates[button] = ButtonState.Pressed;
+                prevStates[playniteIndex][button] = ButtonState.Pressed;
                 SimulateKeyInput(keyboardMap[button], true);
             }
-            else if (currentState == ButtonState.Released && prevStates[button] == ButtonState.Pressed)
+            else if (currentState == ButtonState.Released && prevStates[playniteIndex][button] == ButtonState.Pressed)
             {
                 ResetButtonResend(button);
                 SendXInput(button, false);
-                prevStates[button] = ButtonState.Released;
+                prevStates[playniteIndex][button] = ButtonState.Released;
                 SimulateKeyInput(keyboardMap[button], false);
             }
         }
 
-        private void ProcessAxisState(float currentState, XInputButton button, bool positive)
+        private void ProcessAxisState(float currentState, XInputButton button, bool positive, PlayerIndex playniteIndex)
         {
             if (positive)
             {
                 if (currentState > 0.5f && ShouldResendKey(button))
                 {
                     SendXInput(button, true);
-                    prevStates[button] = ButtonState.Pressed;
+                    prevStates[playniteIndex][button] = ButtonState.Pressed;
                     SimulateKeyInput(keyboardMap[button], true);
                 }
-                else if (currentState < 0.5f && prevStates[button] == ButtonState.Pressed)
+                else if (currentState < 0.5f && prevStates[playniteIndex][button] == ButtonState.Pressed)
                 {
                     ResetButtonResend(button);
                     SendXInput(button, false);
-                    prevStates[button] = ButtonState.Released;
+                    prevStates[playniteIndex][button] = ButtonState.Released;
                     SimulateKeyInput(keyboardMap[button], false);
                 }
             }
@@ -359,14 +388,14 @@ namespace Playnite.Input
                 if (currentState < -0.5f && ShouldResendKey(button))
                 {
                     SendXInput(button, true);
-                    prevStates[button] = ButtonState.Pressed;
+                    prevStates[playniteIndex][button] = ButtonState.Pressed;
                     SimulateKeyInput(keyboardMap[button], true);
                 }
-                else if (currentState > -0.5f && prevStates[button] == ButtonState.Pressed)
+                else if (currentState > -0.5f && prevStates[playniteIndex][button] == ButtonState.Pressed)
                 {
                     ResetButtonResend(button);
                     SendXInput(button, false);
-                    prevStates[button] = ButtonState.Released;
+                    prevStates[playniteIndex][button] = ButtonState.Released;
                     SimulateKeyInput(keyboardMap[button], false);
                 }
             }
@@ -380,7 +409,7 @@ namespace Playnite.Input
                 {
                     return;
                 }
-                
+
                 var args = new XInputEventArgs(Key.None, pressed ? XInputButtonState.Pressed : XInputButtonState.Released, button);
                 inputManager.ProcessInput(args);
             }, null);
@@ -406,7 +435,7 @@ namespace Playnite.Input
         private void SimulateKeyInput(VirtualKeyCode key, bool pressed)
         {
             if (SimulateAllKeys || (SimulateNavigationKeys && IsKeysDirectionKey(key)))
-            {                
+            {
                 SendKeyInput(key, pressed);
             }
         }
@@ -427,7 +456,7 @@ namespace Playnite.Input
             }
         }
     }
-    
+
     public class XInputEventArgs : KeyEventArgs
     {
         public XInputButtonState XButtonState
@@ -448,7 +477,6 @@ namespace Playnite.Input
             RoutedEvent = state == XInputButtonState.Pressed ? Keyboard.KeyDownEvent : Keyboard.KeyUpEvent;
         }
     }
-
 
     public class XInputBinding : InputBinding
     {

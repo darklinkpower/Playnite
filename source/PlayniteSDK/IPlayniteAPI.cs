@@ -51,7 +51,17 @@ namespace Playnite.SDK
         /// <summary>
         /// Gets resources API.
         /// </summary>
-        IResourceProvider Resources { get; }        
+        IResourceProvider Resources { get; }
+
+        /// <summary>
+        /// Gets URI handler API.
+        /// </summary>
+        IUriHandlerAPI UriHandler { get; }
+
+        /// <summary>
+        /// Get application settings API.
+        /// </summary>
+        IPlayniteSettingsAPI ApplicationSettings { get; }
 
         /// <summary>
         /// Expands dynamic game variables in specified string.
@@ -81,5 +91,11 @@ namespace Playnite.SDK
         /// </summary>
         /// <returns>Logger object.</returns>
         ILogger CreateLogger();
+
+        /// <summary>
+        /// Starts game.
+        /// </summary>
+        /// <param name="gameId">Game's database ID.</param>
+        void StartGame(Guid gameId);
     }
 }

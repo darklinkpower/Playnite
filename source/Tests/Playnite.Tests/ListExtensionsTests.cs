@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using Playnite;
+using Playnite.SDK.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,6 +40,7 @@ namespace Playnite.Tests
             Assert.IsTrue((new List<string> { "test", "test2" }).IntersectsPartiallyWith(new List<string> { "Test2" }));
             Assert.IsFalse((new List<string> { "test", "test2" }).IntersectsPartiallyWith(new List<string> { string.Empty }));
             Assert.IsFalse((new List<string> { "test", "test2" }).IntersectsPartiallyWith(null));
+            Assert.IsFalse((new List<string> { "test", "test2" }).IntersectsPartiallyWith(new List<string> { "aaaa" }));
             Assert.IsFalse(((List<string>)null).IntersectsPartiallyWith(new List<string> { "test", "test2" }));
         }
 
@@ -105,6 +107,23 @@ namespace Playnite.Tests
         }
 
         [Test]
+        public void IsListEqualExactTest()
+        {
+            Assert.IsTrue(
+                new List<int> { 1, 2, 3 }.IsListEqualExact(
+                new List<int> { 1, 2, 3 }));
+            Assert.IsFalse(
+                new List<int> { 1, 2, 3 }.IsListEqualExact(
+                new List<int> { 3, 2, 1 }));
+            Assert.IsFalse(
+                new List<int> { 1, 2, 3 }.IsListEqualExact(
+                new List<int> { 1, }));
+            Assert.IsFalse(
+                new List<int> { 1 }.IsListEqualExact(
+                new List<int> { 1, 2, 3 }));
+        }
+
+        [Test]
         public void GetCommonItemsTest()
         {
             List<int> list1 = new List<int> { 1, 2, 3, 4, };
@@ -127,6 +146,18 @@ namespace Playnite.Tests
             Assert.AreEqual(3, distinct[0]);
             Assert.AreEqual(4, distinct[1]);
             Assert.AreEqual(5, distinct[2]);
+        }
+
+        [Test]
+        public void ContainsTest()
+        {
+            List<int> list1 = new List<int> { 1, 2, 3, 4, };
+            List<int> list2 = new List<int> { 1, 2 };
+            List<int> list3 = new List<int> { 1, 2, 5 };
+
+            Assert.IsTrue(list1.Contains(list2));
+            Assert.IsFalse(list2.Contains(list1));
+            Assert.IsFalse(list1.Contains(list3));
         }
     }
 }

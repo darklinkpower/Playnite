@@ -20,6 +20,7 @@ using System.Diagnostics;
 using System.Drawing.Imaging;
 using Playnite.Windows;
 using System.Drawing;
+using Playnite.Common.Media.Icons;
 
 namespace Playnite.DesktopApp.ViewModels
 {
@@ -33,6 +34,8 @@ namespace Playnite.DesktopApp.ViewModels
 
         public class ImportableProgram : SelectableItem<Program>
         {
+            public readonly static BitmapImage EmptyImage = new BitmapImage();
+
             public ProgramType Type
             {
                 get; set;
@@ -85,20 +88,49 @@ namespace Playnite.DesktopApp.ViewModels
                             return null;
                         }
 
-                        var icon = System.Drawing.IconExtension.ExtractIconFromExe(path, true);
-                        if (icon != null)
+                        if (path.EndsWith(".ico", StringComparison.OrdinalIgnoreCase))
                         {
-                            iconSource = icon.ToImageSource();
+                            iconSource = BitmapExtensions.CreateSourceFromURI(path);
                         }
+                        else
+                        {
+                            var icon = IconExtractor.ExtractMainIconFromFile(path);
+                            if (icon != null)
+                            {
+                                try
+                                {
+                                    iconSource = icon.ToImageSource();
+                                }
+                                catch (Exception e)
+                                {
+                                    logger.Error(e, "Failed to convert icon.");
+                                }
+                                finally
+                                {
+                                    icon.Dispose();
+                                }
+                            }
+                        }
+                    }
+
+                    if (iconSource == null)
+                    {
+                        iconSource = EmptyImage;
                     }
 
                     return iconSource;
                 }
             }
 
+            private bool import;
             public bool Import
             {
-                get; set;
+                get => import;
+                set
+                {
+                    import = value;
+                    OnPropertyChanged();
+                }
             }
 
             public ImportableProgram(Program program, ProgramType type) : base(program)
@@ -107,7 +139,7 @@ namespace Playnite.DesktopApp.ViewModels
                 DisplayPath = type == ProgramType.Win32 ? program.Path : "Microsoft Store";
             }
         }
-        
+
         public List<GameMetadata> SelectedGames
         {
             get;
@@ -152,6 +184,18 @@ namespace Playnite.DesktopApp.ViewModels
             {
                 isLoading = value;
                 OnPropertyChanged();
+            }
+        }
+
+        private bool markImportAll;
+        public bool MarkImportAll
+        {
+            get => markImportAll;
+            set
+            {
+                markImportAll = value;
+                OnPropertyChanged();
+                Programs.ForEach(a => a.Import = markImportAll);
             }
         }
 
@@ -254,18 +298,18 @@ namespace Playnite.DesktopApp.ViewModels
 
                 var newGame = new GameInfo()
                 {
-                    Name = program.Item.Name,
+                    Name = program.Item.Name.RemoveTrademarks(),
                     GameId = program.Item.AppId,
                     InstallDirectory = program.Item.WorkDir,
                     Source = program.Type == ProgramType.UWP ? "Microsoft Store" : string.Empty,
-                    IsInstalled = true
+                    IsInstalled = true,
+                    Platform = "PC"
                 };
 
                 var newMeta = new GameMetadata()
                 {
                     GameInfo = newGame
                 };
-
 
                 var path = program.Item.Path;
                 if (program.Type == ProgramType.Win32 && !string.IsNullOrEmpty(program.Item.WorkDir))
@@ -279,10 +323,10 @@ namespace Playnite.DesktopApp.ViewModels
                     Arguments = program.Item.Arguments,
                     Type = GameActionType.File,
                     WorkingDir = program.Type == ProgramType.Win32 ? ExpandableVariables.InstallationDirectory : string.Empty,
-                    Name = "Play"                    
+                    Name = "Play"
                 };
 
-                if (program.IconSource != null)
+                if (program.IconSource != null &&  program.IconSource != ImportableProgram.EmptyImage)
                 {
                     var bitmap = (BitmapSource)program.IconSource;
                     newMeta.Icon = new MetadataFile(Guid.NewGuid().ToString() + ".png", bitmap.ToPngArray());
@@ -301,7 +345,7 @@ namespace Playnite.DesktopApp.ViewModels
             {
                 return;
             }
-            
+
             var productName = FileVersionInfo.GetVersionInfo(path).ProductName;
             var import = new ImportableProgram(new Program()
             {
@@ -322,7 +366,7 @@ namespace Playnite.DesktopApp.ViewModels
         {
             IsLoading = true;
             cancelToken = new CancellationTokenSource();
-       
+
             try
             {
                 var allApps = new List<ImportableProgram>();

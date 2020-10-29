@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.IO.Compression;
 using Playnite.SDK;
+using System.Diagnostics;
 
 namespace Playnite.Common
 {
@@ -24,11 +25,6 @@ namespace Playnite.Common
         public static void CreateDirectory(string path, bool clean)
         {
             var directory = path;
-            if (!string.IsNullOrEmpty(Path.GetExtension(path)))
-            {
-                directory = Path.GetDirectoryName(path);
-            }
-
             if (string.IsNullOrEmpty(directory))
             {
                 return;
@@ -103,9 +99,30 @@ namespace Playnite.Common
 
         public static string GetMD5(string filePath)
         {
-            using (var stream = File.OpenRead(filePath))
+            using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             {
                 return GetMD5(stream);
+            }
+        }
+
+        public static bool AreFileContentsEqual(string path1, string path2)
+        {
+            var info1 = new FileInfo(path1);
+            var info2 = new FileInfo(path2);
+            if (info1.Length != info2.Length)
+            {
+                return false;
+            }
+            else
+            {
+                if (GetMD5(path1) == GetMD5(path2))
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
             }
         }
 
@@ -194,24 +211,50 @@ namespace Playnite.Common
             throw new IOException($"Failed to read {path}", ioException);
         }
 
-        public static Stream OpenFileStreamSafe(string path, int retryAttempts = 5)
+        public static Stream CreateWriteFileStreamSafe(string path, int retryAttempts = 5)
         {
             IOException ioException = null;
             for (int i = 0; i < retryAttempts; i++)
             {
                 try
                 {
-                    return new FileStream(path, FileMode.Open);
+                    return new FileStream(path, FileMode.Create, FileAccess.ReadWrite);
                 }
                 catch (IOException exc)
                 {
-                    logger.Debug($"Can't open file stream, trying again. {path}");
+                    logger.Debug($"Can't open write file stream, trying again. {path}");
                     ioException = exc;
                     Task.Delay(500).Wait();
                 }
             }
 
             throw new IOException($"Failed to read {path}", ioException);
+        }
+
+        public static Stream OpenReadFileStreamSafe(string path, int retryAttempts = 5)
+        {
+            IOException ioException = null;
+            for (int i = 0; i < retryAttempts; i++)
+            {
+                try
+                {
+                    return new FileStream(path, FileMode.Open, FileAccess.Read);
+                }
+                catch (IOException exc)
+                {
+                    logger.Debug($"Can't open read file stream, trying again. {path}");
+                    ioException = exc;
+                    Task.Delay(500).Wait();
+                }
+            }
+
+            throw new IOException($"Failed to read {path}", ioException);
+        }
+
+        public static void WriteStringToFile(string path, string content)
+        {
+            PrepareSaveFile(path);
+            File.WriteAllText(path, content);
         }
 
         public static void WriteStringToFileSafe(string path, string content, int retryAttempts = 5)
@@ -259,7 +302,6 @@ namespace Playnite.Common
                 }
                 catch (UnauthorizedAccessException exc)
                 {
-
                     logger.Error(exc, $"Can't detele file, UnauthorizedAccessException. {path}");
                     return;
                 }
@@ -289,8 +331,7 @@ namespace Playnite.Common
 
         public static void CopyDirectory(string sourceDirName, string destDirName, bool copySubDirs = true, bool overwrite = true)
         {
-            DirectoryInfo dir = new DirectoryInfo(sourceDirName);
-
+            var dir = new DirectoryInfo(sourceDirName);
             if (!dir.Exists)
             {
                 throw new DirectoryNotFoundException(
@@ -298,13 +339,13 @@ namespace Playnite.Common
                     + sourceDirName);
             }
 
-            DirectoryInfo[] dirs = dir.GetDirectories();
+            var dirs = dir.GetDirectories();
             if (!Directory.Exists(destDirName))
             {
                 Directory.CreateDirectory(destDirName);
             }
 
-            FileInfo[] files = dir.GetFiles();
+            var files = dir.GetFiles();
             foreach (FileInfo file in files)
             {
                 string temppath = Path.Combine(destDirName, file.Name);
@@ -319,6 +360,49 @@ namespace Playnite.Common
                     CopyDirectory(subdir.FullName, temppath, copySubDirs);
                 }
             }
+        }
+
+        public static string LookupAlternativeFilePath(string filePath)
+        {
+            return CheckDrivesForPath(filePath, path => File.Exists(path));
+        }
+
+        public static string LookupAlternativeDirectoryPath(string directoryPath)
+        {
+            return CheckDrivesForPath(directoryPath, path => Directory.Exists(path));
+        }
+
+        private static string CheckDrivesForPath(string originalPath, Predicate<string> predicate)
+        {
+            try
+            {
+                if (!Paths.IsFullPath(originalPath))
+                {
+                    return string.Empty;
+                }
+
+                var rootPath = Path.GetPathRoot(originalPath);
+                var availableDrives = DriveInfo.GetDrives()
+                    .Where(d => d.IsReady && !d.Name.Equals(rootPath, StringComparison.OrdinalIgnoreCase));
+
+                foreach (var drive in availableDrives)
+                {
+                    var pathWithoutDrive = originalPath.Substring(drive.Name.Length);
+                    var newDirectoryPath = Path.Combine(drive.Name, pathWithoutDrive);
+                    if (predicate(newDirectoryPath))
+                    {
+                        return newDirectoryPath;
+                    }
+                }
+
+                return string.Empty;
+            }
+            catch (Exception ex) when (!Debugger.IsAttached)
+            {
+                logger.Error(ex, $"Error looking for alternative path for original path \"{originalPath}\"");
+            }
+
+            return string.Empty;
         }
     }
 }

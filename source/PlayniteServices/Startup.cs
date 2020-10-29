@@ -11,6 +11,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using PlayniteServices.Controllers.IGDB;
+using PlayniteServices.Filters;
 
 namespace PlayniteServices
 {
@@ -36,6 +39,7 @@ namespace PlayniteServices
             }).AddJsonOptions(options =>
             {
                 options.SerializerSettings.NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore;
+                options.SerializerSettings.DefaultValueHandling = Newtonsoft.Json.DefaultValueHandling.Ignore;
             });
 
             services.AddLogging(loggingBuilder =>
@@ -44,6 +48,13 @@ namespace PlayniteServices
                 loggingBuilder.AddConsole();
                 loggingBuilder.AddDebug();
             });
+
+            services.Configure<AppSettings>(Configuration);
+
+            services.AddSingleton(s => new UpdatableAppSettings(s.GetService<IOptionsMonitor<AppSettings>>()));
+            services.AddSingleton<IgdbApi>();
+            services.AddSingleton<PlayniteVersionFilter>();
+            services.AddSingleton<ServiceKeyFilter>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

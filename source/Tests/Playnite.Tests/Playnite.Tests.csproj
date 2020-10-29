@@ -108,6 +108,12 @@
     <Compile Include="Api\PluginDescriptionTests.cs" />
     <Compile Include="App\UpdateTests.cs" />
     <Compile Include="CloneObjectTests.cs" />
+    <Compile Include="Database\EmulatorsCollectionTests.cs" />
+    <Compile Include="Extensions\BitmapExtensionsTests.cs" />
+    <Compile Include="Extensions\ObjectExtensionsTests.cs" />
+    <Compile Include="GameFieldComparerTests.cs" />
+    <Compile Include="GamesEditorTests.cs" />
+    <Compile Include="GoogleImageDownloaderTests.cs" />
     <Compile Include="ImageSourceManagerTests.cs" />
     <Compile Include="Database\GameDatabaseFileTests.cs" />
     <Compile Include="Database\GameDatabaseMigrationTests.cs" />
@@ -122,14 +128,21 @@
     <Compile Include="GamesStatsTests.cs" />
     <Compile Include="IniParserTests.cs" />
     <Compile Include="ListExtensionsTests.cs" />
+    <Compile Include="Models\DatabaseObjectTests.cs" />
+    <Compile Include="Models\GameActionTests.cs" />
+    <Compile Include="ImagesTests.cs" />
+    <Compile Include="PlayniteUriHandlerTests.cs" />
+    <Compile Include="Plugins\ExtensionManifestTests.cs" />
+    <Compile Include="ProcessStarterTests.cs" />
+    <Compile Include="Scripting\Batch\BatchTests.cs" />
+    <Compile Include="SigningToolsTests.cs" />
     <Compile Include="XmlTests.cs" />
     <Compile Include="SizesTests.cs" />
     <Compile Include="LocalizationTests.cs" />
-    <Compile Include="Metadata\IGDBMetadataProviderTests.cs" />
     <Compile Include="Metadata\MetadataDownloaderDownloadTests.cs" />
     <Compile Include="Metadata\WikipediaMetadataProviderTests.cs" />
     <Compile Include="MockDialogsFactory.cs" />
-    <Compile Include="MockResourceProvider.cs" />
+    <Compile Include="TestResourceProvider.cs" />
     <Compile Include="MockWindowFactory.cs" />
     <Compile Include="Models\GameTests.cs" />
     <Compile Include="Models\Old\0\Game.cs" />
@@ -161,6 +174,7 @@
       <Link>Resources\extension.yaml</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="App.config" />
     <None Include="packages.config" />
     <None Include="Resources\GOG\library_unreleased.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -217,6 +231,21 @@
       <SubType>Designer</SubType>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\Playnite\Localization\LocSource.xaml">
+      <Link>Localization\LocSource.xaml</Link>
+      <SubType>Designer</SubType>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Resources\Images\mec_icon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\Images\gw2_icon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

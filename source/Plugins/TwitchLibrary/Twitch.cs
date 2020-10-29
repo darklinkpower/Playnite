@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using TwitchLibrary.Models;
 
 namespace TwitchLibrary
 {
@@ -41,7 +42,7 @@ namespace TwitchLibrary
         {
             get
             {
-                var program = Programs.GetUnistallProgramsList().FirstOrDefault(a => a.DisplayName == "Twitch");
+                var program = Programs.GetUnistallProgramsList().FirstOrDefault(a => a.DisplayName == "Twitch" && a.UninstallString?.Contains("UninstallTwitch") == true);
                 if (program == null)
                 {
                     return null;
@@ -65,7 +66,6 @@ namespace TwitchLibrary
                     return null;
                 }
             }
-
         }
 
         public static string Icon => Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), @"Resources\twitchicon.png");
@@ -79,6 +79,23 @@ namespace TwitchLibrary
         public static void StartClient()
         {
             ProcessStarter.StartProcess(ClientExecPath, string.Empty);
+        }
+
+        public static GameConfiguration GetGameConfiguration(string gameDir)
+        {
+            var configFile = Path.Combine(gameDir, GameConfiguration.ConfigFileName);
+            if (File.Exists(configFile))
+            {
+                return Serialization.FromJsonFile<GameConfiguration>(configFile);
+            }
+
+            return null;
+        }
+
+        public static bool GetGameRequiresClient(GameConfiguration config)
+        {
+            return !config.Main.ClientId.IsNullOrEmpty() &&
+                    config.Main.AuthScopes.HasItems();
         }
     }
 }

@@ -67,6 +67,15 @@ namespace Playnite.DesktopApp.Controls
             var obj = sender as FilterEnumSelectionBox;
             var list = (Type)e.NewValue;
             var items = new List<SelectableItem<SelectionObject>>();
+
+            if (obj.ItemsList.HasItems())
+            {
+                foreach (var item in obj.ItemsList)
+                {
+                    item.PropertyChanged -= obj.NewItem_PropertyChanged;
+                }
+            }
+
             foreach (Enum en in list.GetEnumValues())
             {
                 var newItem = new SelectableItem<SelectionObject>(new SelectionObject(en));
@@ -75,32 +84,33 @@ namespace Playnite.DesktopApp.Controls
                     newItem.Selected = obj.FilterProperties.Values?.Contains(newItem.Item.Value) == true;
                 }
 
-                newItem.PropertyChanged += (s, args) =>
-                {
-                    if (obj.IgnoreChanges)
-                    {
-                        return;
-                    }
-
-                    if (args.PropertyName == nameof(newItem.Selected))
-                    {
-                        obj.OnPropertyChanged(nameof(obj.SelectionString));
-                        var selected = obj.ItemsList.Where(a => a.Selected == true);
-                        if (selected.HasItems())
-                        {
-                            obj.FilterProperties = new EnumFilterItemProperites(selected.Select(a => a.Item.Value).ToList());
-                        }
-                        else
-                        {
-                            obj.FilterProperties = null;
-                        }
-                    }
-                };
-
+                newItem.PropertyChanged += obj.NewItem_PropertyChanged;
                 items.Add(newItem);
             }
 
             obj.ItemsList = items;
+        }
+
+        private void NewItem_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (IgnoreChanges)
+            {
+                return;
+            }
+
+            if (e.PropertyName == nameof(SelectableItem<SelectionObject>.Selected))
+            {
+                OnPropertyChanged(nameof(SelectionString));
+                var selected = ItemsList.Where(a => a.Selected == true);
+                if (selected.HasItems())
+                {
+                    FilterProperties = new EnumFilterItemProperites(selected.Select(a => a.Item.Value).ToList());
+                }
+                else
+                {
+                    FilterProperties = null;
+                }
+            }
         }
 
         public List<SelectableItem<SelectionObject>> ItemsList { get; set; }
@@ -153,7 +163,7 @@ namespace Playnite.DesktopApp.Controls
             else
             {
                 obj.ItemsList?.ForEach(a => a.Selected = obj.FilterProperties.Values.Contains(a.Item.Value));
-            }            
+            }
             obj.IgnoreChanges = false;
             obj.OnPropertyChanged(nameof(obj.SelectionString));
         }

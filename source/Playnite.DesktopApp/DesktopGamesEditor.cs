@@ -53,7 +53,9 @@ namespace Playnite.DesktopApp
                             new GameEditWindowFactory(),
                             Dialogs,
                             new ResourceProvider(),
-                            Extensions);
+                            Extensions,
+                            Application.Api,
+                            AppSettings);
             return model.OpenView();
         }
 
@@ -65,7 +67,9 @@ namespace Playnite.DesktopApp
                             new GameEditWindowFactory(),
                             Dialogs,
                             new ResourceProvider(),
-                            Extensions);
+                            Extensions,
+                            Application.Api,
+                            AppSettings);
             return model.OpenView();
         }
     }

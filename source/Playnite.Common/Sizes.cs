@@ -50,17 +50,7 @@ namespace Playnite.Common
             Height = height;
         }
 
-        public override bool Equals(object obj)
-        {
-            if (obj is AspectRatio other)
-            {
-                return other.Height == Height && other.Width == Width;
-            }
-            else
-            {
-                return false;
-            }
-        }
+        public override bool Equals(object obj) => Equals(obj as AspectRatio);
 
         public bool Equals(AspectRatio other)
         {
@@ -71,10 +61,17 @@ namespace Playnite.Common
 
         public override int GetHashCode()
         {
-            var hashCode = 859600377;
-            hashCode = hashCode * -1521134295 + Width.GetHashCode();
-            hashCode = hashCode * -1521134295 + Height.GetHashCode();
-            return hashCode;
+            return base.GetHashCode();
+        }
+
+        public static bool operator ==(AspectRatio obj1, AspectRatio obj2)
+        {
+            return obj1?.Equals(obj2) == true;
+        }
+
+        public static bool operator !=(AspectRatio obj1, AspectRatio obj2)
+        {
+            return obj1?.Equals(obj2) == false;
         }
 
         public override string ToString()
@@ -109,6 +106,16 @@ namespace Playnite.Common
         static int GetGreatestCommonDivisor(int a, int b)
         {
             return b == 0 ? a : GetGreatestCommonDivisor(b, a % b);
+        }
+
+        public static double GetMegapixelsFromRes(int width, int height)
+        {
+            return Math.Round((double)(width * height) / 1000000, 3);
+        }
+
+        public static double GetMegapixelsFromRes(ImageProperties props)
+        {
+            return GetMegapixelsFromRes(props.Width, props.Height);
         }
     }
 }

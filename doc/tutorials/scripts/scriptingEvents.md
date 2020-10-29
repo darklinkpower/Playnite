@@ -11,12 +11,15 @@ Available Events
 
 |PowerShell Name | Python Name | Event | Passed Arguments |
 | - | - | - | - |
-| OnScriptLoaded | on_script_loaded | Script is loaded by Playnite. | None |
 | OnGameStarting | on_game_starting | Before game is started. | [Game](xref:Playnite.SDK.Models.Game) |
 | OnGameStarted | on_game_started | Game started running. | [Game](xref:Playnite.SDK.Models.Game) |
 | OnGameStopped | on_game_stopped | Game stopped running.  | [Game](xref:Playnite.SDK.Models.Game) and session length in seconds |
 | OnGameInstalled | on_game_installed | Game is installed. | [Game](xref:Playnite.SDK.Models.Game) |
 | OnGameUninstalled | on_game_uninstalled | Game is uninstalled. | [Game](xref:Playnite.SDK.Models.Game) |
+| OnGameSelected | on_game_selected | Game selection changed. | [GameSelectionEventArgs](xref:Playnite.SDK.Events.GameSelectionEventArgs) |
+| OnApplicationStarted | on_application_started | Playnite was started. | None |
+| OnApplicationStopped | on_application_stopped | Playnite is shutting down. | None |
+| OnLibraryUpdated | on_library_updated | Library was updated. | None |
 
 Example - Handling start/stop events
 ---------------------
@@ -27,8 +30,7 @@ To have a code executed on selected event define function with specific name in 
 
 Following example writes name of currently playing game into a text file.
 
-**PowerShell**:
-
+# [PowerShell](#tab/tabpowershell)
 ```powershell
 function global:OnGameStarted()
 {
@@ -40,20 +42,19 @@ function global:OnGameStarted()
 }
 ```
 
-**IronPython**:
-
+# [IronPython](#tab/tabpython)
 ```python
 def on_game_started(game):
     with open("RunningGame.txt", "w") as text_file:
         text_file.write(game.Name)
 ```
+***
 
 ### Game Stopped
 
 This example writes name of game that stopped running and the time game was running for into a text file.
 
-**PowerShell**:
-
+# [PowerShell](#tab/tabpowershell)
 ```powershell
 function global:OnGameStopped()
 {
@@ -65,18 +66,18 @@ function global:OnGameStopped()
     "$($game.Name) was running for $elapsedSeconds seconds" | Out-File "StoppedGame.txt"
 }
 ```
-**IronPython**:
 
+# [IronPython](#tab/tabpython)
 ```python
 def on_game_stopped(game, elapsed_seconds):
     with open("StoppedGame.txt", "w") as text_file:
         text_file.write("{0} was running for {1} seconds".format(game.Name, elapsed_seconds))
 ```
+***
 
 ### Full File Examples
 
-**PowerShell** (save as *.ps1 file):
-
+# [PowerShell](#tab/tabpowershell)
 ```powershell
 function global:OnGameStarted()
 {
@@ -98,8 +99,7 @@ function global:OnGameStopped()
 }
 ```
 
-**IronPython** (save as *.py file):
-
+# [IronPython](#tab/tabpython)
 ```python
 def on_game_started(game):
     with open("RunningGame.txt", "w") as text_file:
@@ -109,3 +109,4 @@ def on_game_stopped(game, elapsed_seconds):
     with open("StoppedGame.txt", "w") as text_file:
         text_file.write("{0} was running for {1} seconds".format(game.Name, elapsed_seconds))
 ```
+***

@@ -1,4 +1,6 @@
 ﻿using Playnite.Controls;
+using Playnite.FullscreenApp.Controls;
+using Playnite.SDK;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -17,11 +19,10 @@ using System.Windows.Shapes;
 
 namespace Playnite.FullscreenApp.Windows
 {
-    public partial class MessageBoxWindow : WindowBase, INotifyPropertyChanged
+    public partial class MessageBoxWindow : WindowBase
     {
         private MessageBoxResult result;
-
-        public event PropertyChangedEventHandler PropertyChanged;
+        private MessageBoxOption resultCustom;
 
         private string text = string.Empty;
         public string Text
@@ -89,7 +90,6 @@ namespace Playnite.FullscreenApp.Windows
             }
         }
 
-
         private bool showInputField = false;
         public bool ShowInputField
         {
@@ -128,11 +128,6 @@ namespace Playnite.FullscreenApp.Windows
             InitializeComponent();
         }
 
-        public void OnPropertyChanged([CallerMemberName]string name = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
-
         public MessageBoxResult Show(Window owner, string messageBoxText, string caption, MessageBoxButton button, MessageBoxImage icon, MessageBoxResult defaultResult, MessageBoxOptions options)
         {
             if (owner == null)
@@ -148,8 +143,7 @@ namespace Playnite.FullscreenApp.Windows
             Height = owner.Height;
             Width = owner.Width;
             result = defaultResult;
-            Text = messageBoxText;
-            Caption = caption;
+            SetStrings(messageBoxText, caption);
             DisplayIcon = icon;
 
             switch (button)
@@ -186,6 +180,84 @@ namespace Playnite.FullscreenApp.Windows
 
             ShowDialog();
             return result;
+        }
+
+        public MessageBoxOption ShowCustom(
+            Window owner,
+            string messageBoxText,
+            string caption,
+            MessageBoxImage icon,
+            List<MessageBoxOption> options)
+        {
+            if (owner == null)
+            {
+                WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            }
+
+            if (this != owner)
+            {
+                Owner = owner;
+            }
+
+            Height = owner.Height;
+            Width = owner.Width;
+            SetStrings(messageBoxText, caption);
+            DisplayIcon = icon;
+            ShowOKButton = false;
+            ShowYesButton = false;
+            ShowNoButton = false;
+            ShowCancelButton = false;
+
+            ButtonEx toFocus = null;
+            foreach (var option in options)
+            {
+                var title = option.Title;
+                var button = new ButtonEx();
+                button.Content = title.StartsWith("LOC") ? ResourceProvider.GetString(title) : title;
+                button.Style = ResourceProvider.GetResource("ButtonMessageBox") as Style;
+                button.Tag = option;
+                button.Click += (s, __) =>
+                {
+                    resultCustom = (s as ButtonEx).Tag as MessageBoxOption;
+                    Close();
+                };
+
+                StackButtons.Children.Add(button);
+                if (option.IsDefault)
+                {
+                    toFocus = button;
+                    toFocus.Focus();
+                }
+            }
+
+            if (toFocus == null)
+            {
+                StackButtons.Children[0].Focus();
+            }
+
+            ShowDialog();
+            return resultCustom;
+        }
+
+        private void SetStrings(string messageText, string messageCaption)
+        {
+            if (messageText?.StartsWith("LOC") == true)
+            {
+                Text = ResourceProvider.GetString(messageText);
+            }
+            else
+            {
+                Text = messageText;
+            }
+
+            if (messageCaption?.StartsWith("LOC") == true)
+            {
+                Caption = ResourceProvider.GetString(messageCaption);
+            }
+            else
+            {
+                Caption = messageCaption;
+            }
         }
 
         private void ButtonOK_Click(object sender, RoutedEventArgs e)

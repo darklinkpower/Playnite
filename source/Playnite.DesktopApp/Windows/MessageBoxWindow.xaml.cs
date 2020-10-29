@@ -14,17 +14,17 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using Playnite.Windows;
 
 namespace Playnite.DesktopApp.Windows
 {
     /// <summary>
     /// Interaction logic for MessageBoxWindow.xaml
     /// </summary>
-    public partial class MessageBoxWindow : WindowBase, INotifyPropertyChanged
+    public partial class MessageBoxWindow : WindowBase
     {
         private MessageBoxResult result;
-
-        public event PropertyChangedEventHandler PropertyChanged;
+        private MessageBoxOption resultCustom;
 
         private string text = string.Empty;
         public string Text
@@ -92,7 +92,6 @@ namespace Playnite.DesktopApp.Windows
             }
         }
 
-
         private bool showInputField = false;
         public bool ShowInputField
         {
@@ -137,21 +136,18 @@ namespace Playnite.DesktopApp.Windows
             }
         }
 
-        
         public MessageBoxWindow() : base()
         {
             InitializeComponent();
         }
 
-        public void OnPropertyChanged(string name)
+        public void ShowInputReadOnly(
+            Window owner,
+            string messageBoxText,
+            string caption,
+            string inputText)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
-
-
-        public void ShowInputReadOnly(Window owner, string messageBoxText, string caption, string inputText)
-        {
-            if (owner == null)
+            if (owner == null || owner == this)
             {
                 WindowStartupLocation = WindowStartupLocation.CenterScreen;
             }
@@ -162,18 +158,23 @@ namespace Playnite.DesktopApp.Windows
             }
 
             TextInputText.Focus();
-            Text = messageBoxText;
-            Caption = caption;
+            SetStrings(messageBoxText, caption);
             ShowInputField = true;
             ShowOKButton = true;
+            ButtonOK.IsDefault = true;
+            ButtonOK.Focus();
             InputText = inputText ?? string.Empty;
             IsTextReadOnly = true;
             ShowDialog();
         }
 
-        public StringSelectionDialogResult ShowInput(Window owner, string messageBoxText, string caption, string defaultInput)
+        public StringSelectionDialogResult ShowInput(
+            Window owner,
+            string messageBoxText,
+            string caption,
+            string defaultInput)
         {
-            if (owner == null)
+            if (owner == null || owner == this)
             {
                 WindowStartupLocation = WindowStartupLocation.CenterScreen;
             }
@@ -184,11 +185,12 @@ namespace Playnite.DesktopApp.Windows
             }
 
             TextInputText.Focus();
-            Text = messageBoxText;
-            Caption = caption;
+            SetStrings(messageBoxText, caption);
             ShowInputField = true;
             ShowOKButton = true;
+            ButtonOK.IsDefault = true;
             ShowCancelButton = true;
+            ButtonCancel.IsCancel = true;
             InputText = defaultInput ?? string.Empty;
             ShowDialog();
 
@@ -202,9 +204,16 @@ namespace Playnite.DesktopApp.Windows
             }
         }
 
-        public MessageBoxResult Show(Window owner, string messageBoxText, string caption, MessageBoxButton button, MessageBoxImage icon, MessageBoxResult defaultResult, MessageBoxOptions options)
+        public MessageBoxResult Show(
+            Window owner,
+            string messageBoxText,
+            string caption,
+            MessageBoxButton button,
+            MessageBoxImage icon,
+            MessageBoxResult defaultResult,
+            MessageBoxOptions options)
         {
-            if (owner == null)
+            if (owner == null || owner == this)
             {
                 WindowStartupLocation = WindowStartupLocation.CenterScreen;
             }
@@ -215,40 +224,120 @@ namespace Playnite.DesktopApp.Windows
             }
 
             result = defaultResult;
-            Text = messageBoxText;
-            Caption = caption;
+            SetStrings(messageBoxText, caption);
             DisplayIcon = icon;
 
             switch (button)
             {
                 case MessageBoxButton.OK:
                     ShowOKButton = true;
+                    ButtonOK.IsDefault = true;
+                    ButtonOK.Focus();
                     break;
                 case MessageBoxButton.OKCancel:
                     ShowOKButton = true;
+                    ButtonOK.IsDefault = true;
+                    ButtonOK.Focus();
                     ShowCancelButton = true;
+                    ButtonCancel.IsCancel = true;
                     break;
                 case MessageBoxButton.YesNoCancel:
                     ShowYesButton = true;
+                    ButtonYes.Focus();
+                    ButtonYes.IsDefault = true;
                     ShowNoButton = true;
                     ShowCancelButton = true;
+                    ButtonCancel.IsCancel = true;
                     break;
                 case MessageBoxButton.YesNo:
                     ShowYesButton = true;
+                    ButtonYes.Focus();
+                    ButtonYes.IsDefault = true;
                     ShowNoButton = true;
+                    ButtonNo.IsCancel = true;
                     break;
                 default:
                     ShowOKButton = true;
+                    ButtonOK.Focus();
+                    ButtonOK.IsDefault = true;
                     break;
-            }
-
-            if (ShowOKButton)
-            {
-                ButtonOK.Focus();
             }
 
             ShowDialog();
             return result;
+        }
+
+        public MessageBoxOption ShowCustom(
+            Window owner,
+            string messageBoxText,
+            string caption,
+            MessageBoxImage icon,
+            List<MessageBoxOption> options)
+        {
+            if (owner == null || owner == this)
+            {
+                WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            }
+
+            if (this != owner)
+            {
+                Owner = owner;
+            }
+
+            SetStrings(messageBoxText, caption);
+            DisplayIcon = icon;
+
+            ShowOKButton = false;
+            ShowYesButton = false;
+            ShowNoButton = false;
+            ShowCancelButton = false;
+            ShowInputField = false;
+
+            foreach (var option in options)
+            {
+                var title = option.Title;
+                var button = new Button();
+                button.Content = title.StartsWith("LOC") ? ResourceProvider.GetString(title) : title;
+                button.Style = ResourceProvider.GetResource("BottomButton") as Style;
+                button.Tag = option;
+                button.IsDefault = option.IsDefault;
+                button.IsCancel = option.IsCancel;
+                button.Click += (s, __) =>
+                {
+                    resultCustom = (s as Button).Tag as MessageBoxOption;
+                    Close();
+                };
+
+                StackButtons.Children.Add(button);
+                if (option.IsDefault)
+                {
+                    button.Focus();
+                }
+            }
+
+            ShowDialog();
+            return resultCustom;
+        }
+
+        private void SetStrings(string messageText, string messageCaption)
+        {
+            if (messageText?.StartsWith("LOC") == true)
+            {
+                Text = ResourceProvider.GetString(messageText);
+            }
+            else
+            {
+                Text = messageText;
+            }
+
+            if (messageCaption?.StartsWith("LOC") == true)
+            {
+                Caption = ResourceProvider.GetString(messageCaption);
+            }
+            else
+            {
+                Caption = messageCaption;
+            }
         }
 
         private void ButtonOK_Click(object sender, RoutedEventArgs e)

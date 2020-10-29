@@ -94,6 +94,7 @@ namespace Playnite
                     Publisher?.IsSet == true ||
                     Developer?.IsSet == true ||
                     Tag?.IsSet == true ||
+                    Feature?.IsSet == true ||
                     CompletionStatus?.IsSet == true ||
                     UserScore?.IsSet == true ||
                     CriticScore?.IsSet == true ||
@@ -110,10 +111,10 @@ namespace Playnite
     public class FullscreenSettings : ObservableObject
     {
         [JsonIgnore]
-        public List<Screen> AvailableScreens => Computer.GetMonitors();
+        public List<ComputerScreen> AvailableScreens => Computer.GetScreens();
 
         [JsonIgnore]
-        public List<ThemeDescription> AvailableThemes => ThemeManager.GetAvailableThemes(ApplicationMode.Fullscreen);
+        public List<ThemeManifest> AvailableThemes => ThemeManager.GetAvailableThemes(ApplicationMode.Fullscreen);
 
         [JsonIgnore]
         public const FullscreenButtonPrompts DefaultButtonPrompts = FullscreenButtonPrompts.Xbox;
@@ -133,7 +134,7 @@ namespace Playnite
             }
         }
 
-        private int monitor = 0;
+        private int monitor = Computer.GetGetPrimaryScreenIndex();
         public int Monitor
         {
             get
@@ -163,7 +164,7 @@ namespace Playnite
             }
         }
 
-        private int rows = 4;
+        private int rows = 2;
         public int Rows
         {
             get
@@ -324,6 +325,62 @@ namespace Playnite
             set
             {
                 viewSettings = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private bool darkenUninstalledGamesGrid = false;
+        public bool DarkenUninstalledGamesGrid
+        {
+            get => darkenUninstalledGamesGrid;
+            set
+            {
+                darkenUninstalledGamesGrid = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private bool enableMainBackgroundImage = false;
+        public bool EnableMainBackgroundImage
+        {
+            get
+            {
+                return enableMainBackgroundImage;
+            }
+
+            set
+            {
+                enableMainBackgroundImage = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private int mainBackgroundImageBlurAmount = 0;
+        public int MainBackgroundImageBlurAmount
+        {
+            get
+            {
+                return mainBackgroundImageBlurAmount;
+            }
+
+            set
+            {
+                mainBackgroundImageBlurAmount = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private float mainBackgroundImageDarkAmount = 30;
+        public float MainBackgroundImageDarkAmount
+        {
+            get
+            {
+                return mainBackgroundImageDarkAmount;
+            }
+
+            set
+            {
+                mainBackgroundImageDarkAmount = value;
                 OnPropertyChanged();
             }
         }

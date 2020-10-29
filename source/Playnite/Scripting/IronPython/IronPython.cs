@@ -3,6 +3,7 @@ using IronPython.Modules;
 using Microsoft.Scripting;
 using Microsoft.Scripting.Hosting;
 using Playnite.API;
+using Playnite.SDK.Exceptions;
 using Playnite.Settings;
 using System;
 using System.Collections.Generic;
@@ -25,7 +26,7 @@ namespace Playnite.Scripting.IronPython
         private ScriptEngine engine;
         private ScriptScope scope;
 
-        public IronPythonRuntime()
+        public IronPythonRuntime(string runspaceName = "IronPython")
         {
             engine = Python.CreateEngine();
             var paths = engine.GetSearchPaths();
@@ -47,7 +48,7 @@ clr.AddReference('PresentationFramework')
 from Playnite.SDK.Models import *
 ", PlaynitePaths.ProgramPath.Replace(Path.DirectorySeparatorChar, '/')), scope);
 
-            SetVariable("__logger", new Logger("Python"));
+            SetVariable("__logger", new Logger(runspaceName));
         }
 
         public void Dispose()
@@ -55,12 +56,12 @@ from Playnite.SDK.Models import *
             engine.Runtime.Shutdown();
         }
 
-        public object Execute(string script)
+        public object Execute(string script, string workDir = null)
         {
-            return Execute(script, null);
+            return Execute(script, null, workDir);
         }
 
-        public object Execute(string script, Dictionary<string, object> variables)
+        public object Execute(string script, Dictionary<string, object> variables, string workDir = null)
         {
             if (variables != null)
             {
@@ -70,14 +71,43 @@ from Playnite.SDK.Models import *
                 }
             }
 
-            var source = engine.CreateScriptSourceFromString(script, SourceCodeKind.AutoDetect);            
-            var result = source.Execute<object>(scope);
-            return result;
+            var source = engine.CreateScriptSourceFromString(script, SourceCodeKind.AutoDetect);
+            var currentDir = string.Empty;
+            if (!workDir.IsNullOrEmpty())
+            {
+                currentDir = engine.Execute<string>("os.getcwd()", scope);
+                var dir = workDir.Replace(Path.DirectorySeparatorChar, '/');
+                engine.Execute($"os.chdir('{dir}')", scope);
+            }
+
+            try
+            {
+                object result = null;
+                try
+                {
+                    result = source.Execute<object>(scope);
+                }
+                catch (Exception e)
+                {
+                    var ext = engine.GetService<ExceptionOperations>().FormatException(e);
+                    throw new ScriptRuntimeException(e.Message, ext);
+                }
+
+                return result;
+            }
+            finally
+            {
+                if (!workDir.IsNullOrEmpty())
+                {
+                    currentDir = currentDir.Replace(Path.DirectorySeparatorChar, '/');
+                    engine.Execute($"os.chdir('{currentDir}')", scope);
+                }
+            }
         }
 
-        public void ExecuteFile(string path)
+        public object ExecuteFile(string path, string workDir = null)
         {
-            engine.ExecuteFile(path, scope);
+            return engine.ExecuteFile(path, scope);
         }
 
         public object GetVariable(string name)

@@ -55,8 +55,9 @@ namespace BethesdaLibrary
                     Source = "Bethesda",
                     InstallDirectory = installDir,
                     PlayAction = GetGamePlayTask(gameId),
-                    Name = program.DisplayName,
-                    IsInstalled = true
+                    Name = program.DisplayName.RemoveTrademarks(),
+                    IsInstalled = true,
+                    Platform = "PC"
                 };
 
                 games.Add(newGame);
@@ -74,6 +75,11 @@ namespace BethesdaLibrary
         public override string Name => "Bethesda";
 
         public override Guid Id => Guid.Parse("0E2E793E-E0DD-4447-835C-C44A1FD506EC");
+
+        public override LibraryPluginCapabilities Capabilities { get; } = new LibraryPluginCapabilities
+        {
+            CanShutdownClient = true
+        };
 
         public override ISettings GetSettings(bool firstRunSettings)
         {
@@ -105,11 +111,12 @@ namespace BethesdaLibrary
                 catch (Exception e)
                 {
                     logger.Error(e, "Failed to import uninstalled Bethesda games.");
-                    PlayniteApi.Notifications.Add(
+                    PlayniteApi.Notifications.Add(new NotificationMessage(
                         dbImportMessageId,
                         string.Format(PlayniteApi.Resources.GetString("LOCLibraryImportError"), Name) +
                         System.Environment.NewLine + e.Message,
-                        NotificationType.Error);
+                        NotificationType.Error,
+                        () => OpenSettingsView()));
                 }
             }
 
