@@ -248,6 +248,42 @@ namespace BattleNetLibrary
                 {
                     new Link("Homepage", "https://www.callofduty.com/mw2campaignremastered")
                 }
+            },
+            new BNetApp()
+            {
+                ApiId = 1514493267,
+                ProductId = "ZEUS",
+                InternalId = "zeus",
+                BackgroundUrl = @"https://bnetproduct-a.akamaihd.net//60/d4b6308a9c0ffb51f723462ef1bb73b9-CODBO_CW-Bnet_Product_Desktop-Background-2280x910-UPDATE-For_20200826.jpg",
+                CoverUrl = "https://bnetproduct-a.akamaihd.net//ffd/a8bbbeddae915be62457bc2799f602d0-CODCW-Bnet_Shop_Prod_Card_Vert-700x850-For_20200826.jpg",
+                Name = "Call of Duty: Black Ops Cold War",
+                Type = BNetAppType.Default
+            },
+            new BNetApp()
+            {
+                ApiId = 1464615513,
+                ProductId = "WLBY",
+                InternalId = "wlby",
+                Name = "Crash Bandicoot 4",
+                Type = BNetAppType.Default
+            },
+            new BNetApp()
+            {
+                ApiId = 5198665,
+                ProductId = "OSI",
+                InternalId = "osi",
+                BackgroundUrl = @"https://bnetproduct-a.akamaihd.net//ff5/06eb0dec3719105deb1a8c5afe460c06-3i_Battle.netShop_CheckoutThumbnail_960x540_MB01.png",
+                CoverUrl = "https://bnetproduct-a.akamaihd.net//ffd/a8bbbeddae915be62457bc2799f602d0-CODCW-Bnet_Shop_Prod_Card_Vert-700x850-For_20200826.jpg",
+                Name = "Diablo II: Resurrected",
+                Type = BNetAppType.Default
+            },
+            new BNetApp()
+            {
+                ApiId = 1381257807,
+                ProductId = "RTRO",
+                InternalId = "rtro",
+                Name = "Blizzard Arcade Collection",
+                Type = BNetAppType.Default
             }
         };
 
