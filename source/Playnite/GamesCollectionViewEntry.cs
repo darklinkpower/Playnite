@@ -82,7 +82,37 @@ namespace Playnite
         public InstallationStatus InstallationState => Game.InstallationStatus;
         public char NameGroup => Game.GetNameGroup();
         public string InstallDriveGroup => Game.GetInstallDriveGroup();
-        public InstallSizeGroup InstallSizeGroup => Game.GetInstallSizeGroup();
+        //public InstallSizeGroup InstallSizeGroup => Game.GetInstallSizeGroup();
+        public string InstallSizeGroup => GetGameCustomInstallSizeGroup(Game);
+
+        private string GetGameCustomInstallSizeGroup(Game game)
+        {
+            if (game.InstallSize == null || settings.InstallSizeGroups.Count == 0)
+            {
+                return "None";
+            }
+
+            for (int i = 0; i < settings.InstallSizeGroups.Count; i++)
+            {
+                if (game.InstallSize > settings.InstallSizeGroups[i].MaxSizeBytes)
+                {
+                    continue;
+                }
+
+                if (i == 0)
+                {
+                    return $"Less than {settings.InstallSizeGroups[i].MaxSizeReadable}";
+                }
+                else
+                {
+                    return $"{settings.InstallSizeGroups[i - 1].MaxSizeReadable} - {settings.InstallSizeGroups[i].MaxSizeReadable}".AddZeroWidthCharPrefix(i);
+                }
+            }
+
+            var index = settings.InstallSizeGroups.Count - 1;
+            return $"More than {settings.InstallSizeGroups[index].MaxSizeReadable}".AddZeroWidthCharPrefix(index);
+        }
+
         public bool OverrideInstallState => Game.OverrideInstallState;
 
         public List<Guid> CategoryIds => Game.CategoryIds;

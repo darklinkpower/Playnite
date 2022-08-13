@@ -1918,6 +1918,27 @@ namespace Playnite
             }
         }
 
+        private List<InstallSizeGroupData> installSizeGroups = new List<InstallSizeGroupData>
+        {
+            new InstallSizeGroupData{ MaxSizeBytes = 0x6400000, MaxSizeReadable = "100MB" },
+            new InstallSizeGroupData{ MaxSizeBytes = 0x40000000, MaxSizeReadable = "1GB" },
+            new InstallSizeGroupData{ MaxSizeBytes = 0x140000000, MaxSizeReadable = "5GB" },
+            new InstallSizeGroupData{ MaxSizeBytes = 0x280000000, MaxSizeReadable = "10GB" },
+            new InstallSizeGroupData{ MaxSizeBytes = 0x500000000, MaxSizeReadable = "20GB" },
+            new InstallSizeGroupData{ MaxSizeBytes = 0xA00000000, MaxSizeReadable = "40GB" },
+            new InstallSizeGroupData{ MaxSizeBytes = 0x1900000000, MaxSizeReadable = "100GB" }
+        };
+
+        public List<InstallSizeGroupData> InstallSizeGroups
+        {
+            get => installSizeGroups;
+            set
+            {
+                installSizeGroups = value;
+                OnPropertyChanged();
+            }
+        }
+
         private bool scanLibInstallSizeOnLibUpdate = true;
         public bool ScanLibInstallSizeOnLibUpdate
         {

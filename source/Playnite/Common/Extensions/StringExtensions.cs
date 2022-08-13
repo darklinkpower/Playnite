@@ -14,6 +14,7 @@ namespace System
     public static class StringExtensions
     {
         private static readonly CultureInfo enUSCultInfo = new CultureInfo("en-US", false);
+        private const char zeroWidthChar = '​';
 
         public static string MD5(this string s)
         {
@@ -283,6 +284,22 @@ namespace System
             }
 
             return source.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        }
+
+        public static string AddZeroWidthCharPrefix(this string str, int timesToAdd)
+        {
+            if (timesToAdd <= 0)
+            {
+                return str;
+            }
+
+            var sb = new StringBuilder(timesToAdd);
+            for (int i = 0; i < timesToAdd; i++)
+            {
+                sb.Append(zeroWidthChar);
+            }
+
+            return $"{sb}{str}";
         }
 
         public static bool ContainsInvariantCulture(this string source, string value, CompareOptions compareOptions)
