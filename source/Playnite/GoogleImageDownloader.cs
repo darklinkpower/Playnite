@@ -104,6 +104,34 @@ namespace Playnite
                 }
             }
 
+            foreach (var image in images)
+            {
+                // Images stored in Microsoft images server by default have a very low values
+                // in the parameters that indicate the resolution to obtain the image
+                // Large images that can cause performance issues can also be downsized
+                if (!image.ImageUrl.StartsWith(@"https://store-images.s-microsoft.com/image/"))
+                {
+                    continue;
+                }
+
+                var imageUrl = new Url(image.ImageUrl);
+                var widthParam = imageUrl.QueryParams.FirstOrDefault(x => x.Name == "w")?.Value.ToString();
+                var heightParam = imageUrl.QueryParams.FirstOrDefault(x => x.Name == "h")?.Value.ToString();
+                if (widthParam.IsNullOrEmpty() || heightParam.IsNullOrEmpty())
+                {
+                    continue;
+                }
+
+                if ((widthParam == "480" && heightParam == "270") || (widthParam == "3840" && heightParam == "2160"))
+                {
+                    imageUrl.SetQueryParam("w", "1920");
+                    imageUrl.SetQueryParam("h", "1080");
+                    image.ImageUrl = imageUrl.ToString();
+                    image.Width = 1920;
+                    image.Height = 1080;
+                }
+            }
+
             return images;
         }
     }
